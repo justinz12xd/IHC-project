@@ -17,6 +17,11 @@ export interface AuthState {
 // Clave para localStorage
 const AUTH_STORAGE_KEY = "ihc_auth_state"
 const USERS_STORAGE_KEY = "ihc_users"
+const LOGIN_ATTEMPTS_KEY = "ihc_login_attempts"
+
+// Configuración de bloqueo
+const MAX_LOGIN_ATTEMPTS = 3
+const LOCKOUT_DURATION = 15 * 60 * 1000 // 15 minutos en milisegundos
 
 // Obtener usuarios almacenados
 export function getStoredUsers(): User[] {
@@ -154,10 +159,21 @@ export function registerUser(data: {
 }
 
 // Iniciar sesión
-export function loginUser(email: string, password: string): { success: boolean; user?: User; error?: string } {
+export function loginUser(email: string, password: string): { success: boolean; user?: User; error?: string; remainingAttempts?: number; lockoutUntil?: Date } {
   try {
     if (!email || !password) {
       return { success: false, error: "Email y contraseña son obligatorios" }
+    }
+    
+    // Verificar si la cuenta está bloqueada
+    const lockoutStatus = checkLoginLockout(email)
+    if (lockoutStatus.isLocked) {
+      const minutesLeft = Math.ceil(lockoutStatus.remainingTime! / 60000)
+      return { 
+        success: false, 
+        error: `Cuenta bloqueada temporalmente. Intenta de nuevo en ${minutesLeft} minuto(s).`,
+        lockoutUntil: lockoutStatus.lockoutUntil
+      }
     }
     
     const users = getStoredUsers()
@@ -167,8 +183,26 @@ export function loginUser(email: string, password: string): { success: boolean; 
     )
     
     if (!user) {
-      return { success: false, error: "Credenciales incorrectas" }
+      // Incrementar contador de intentos fallidos
+      const remaining = recordFailedLoginAttempt(email)
+      
+      if (remaining === 0) {
+        return { 
+          success: false, 
+          error: `Demasiados intentos fallidos. Tu cuenta ha sido bloqueada temporalmente por ${MAX_LOGIN_ATTEMPTS * 5} minutos.`,
+          remainingAttempts: 0
+        }
+      }
+      
+      return { 
+        success: false, 
+        error: `Credenciales incorrectas. Te quedan ${remaining} intento(s).`,
+        remainingAttempts: remaining
+      }
     }
+    
+    // Login exitoso - resetear intentos
+    resetLoginAttempts(email)
     
     // Crear objeto de usuario sin contraseña
     const { password: _, ...userWithoutPassword } = user as any
@@ -191,6 +225,91 @@ export function loginUser(email: string, password: string): { success: boolean; 
     console.error("Login error:", error)
     return { success: false, error: "Error inesperado durante el inicio de sesión" }
   }
+}
+
+// Verificar si una cuenta está bloqueada
+function checkLoginLockout(email: string): { isLocked: boolean; remainingTime?: number; lockoutUntil?: Date } {
+  if (typeof window === "undefined") return { isLocked: false }
+  
+  try {
+    const attemptsData = localStorage.getItem(LOGIN_ATTEMPTS_KEY)
+    if (!attemptsData) return { isLocked: false }
+    
+    const attempts = JSON.parse(attemptsData)
+    const userAttempts = attempts[email.toLowerCase()]
+    
+    if (!userAttempts) return { isLocked: false }
+    
+    const now = Date.now()
+    const lockoutUntil = new Date(userAttempts.lockoutUntil)
+    
+    if (userAttempts.locked && lockoutUntil.getTime() > now) {
+      return {
+        isLocked: true,
+        remainingTime: lockoutUntil.getTime() - now,
+        lockoutUntil
+      }
+    }
+    
+    // El bloqueo ha expirado
+    if (userAttempts.locked && lockoutUntil.getTime() <= now) {
+      delete attempts[email.toLowerCase()]
+      localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(attempts))
+    }
+    
+    return { isLocked: false }
+  } catch {
+    return { isLocked: false }
+  }
+}
+
+// Registrar intento fallido
+function recordFailedLoginAttempt(email: string): number {
+  if (typeof window === "undefined") return MAX_LOGIN_ATTEMPTS
+  
+  try {
+    const attemptsData = localStorage.getItem(LOGIN_ATTEMPTS_KEY) || "{}"
+    const attempts = JSON.parse(attemptsData)
+    const emailKey = email.toLowerCase()
+    
+    if (!attempts[emailKey]) {
+      attempts[emailKey] = {
+        count: 1,
+        lastAttempt: Date.now(),
+        locked: false
+      }
+    } else {
+      attempts[emailKey].count += 1
+      attempts[emailKey].lastAttempt = Date.now()
+    }
+    
+    // Bloquear si se alcanzó el máximo
+    if (attempts[emailKey].count >= MAX_LOGIN_ATTEMPTS) {
+      attempts[emailKey].locked = true
+      attempts[emailKey].lockoutUntil = Date.now() + LOCKOUT_DURATION
+      localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(attempts))
+      return 0
+    }
+    
+    localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(attempts))
+    return MAX_LOGIN_ATTEMPTS - attempts[emailKey].count
+  } catch {
+    return MAX_LOGIN_ATTEMPTS
+  }
+}
+
+// Resetear intentos después de login exitoso
+function resetLoginAttempts(email: string): void {
+  if (typeof window === "undefined") return
+  
+  try {
+    const attemptsData = localStorage.getItem(LOGIN_ATTEMPTS_KEY)
+    if (!attemptsData) return
+    
+    const attempts = JSON.parse(attemptsData)
+    delete attempts[email.toLowerCase()]
+    localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(attempts))
+  } catch {}
 }
 
 // Cerrar sesión
@@ -245,6 +364,38 @@ export function updateUserProfile(updates: Partial<Pick<User, 'fullName' | 'phon
   }
 }
 
+// Cambiar contraseña
+export function changePassword(currentPassword: string, newPassword: string): { success: boolean; error?: string } {
+  try {
+    const authState = getAuthState()
+    if (!authState.isAuthenticated || !authState.user) {
+      return { success: false, error: "Usuario no autenticado" }
+    }
+    
+    const users = getStoredUsers()
+    const userIndex = users.findIndex(u => u.id === authState.user!.id)
+    
+    if (userIndex === -1) {
+      return { success: false, error: "Usuario no encontrado" }
+    }
+    
+    // Verificar contraseña actual
+    const user = users[userIndex] as any
+    if (user.password !== currentPassword) {
+      return { success: false, error: "La contraseña actual es incorrecta" }
+    }
+    
+    // Actualizar contraseña
+    users[userIndex] = { ...user, password: newPassword }
+    saveUsers(users)
+    
+    return { success: true }
+  } catch (error) {
+    console.error("Change password error:", error)
+    return { success: false, error: "Error al cambiar la contraseña" }
+  }
+}
+
 // Obtener rutas de redirección según el rol
 export function getRedirectPath(role: string): string {
   switch (role) {
@@ -253,8 +404,9 @@ export function getRedirectPath(role: string): string {
     case "organizer":
       return "/organizer/dashboard"
     case "vendor":
-      return "/setup-vendor"
+      return "/vendor/dashboard"
     case "normal":
+    case "user":
     default:
       return "/dashboard"
   }

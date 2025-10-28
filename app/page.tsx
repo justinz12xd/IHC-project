@@ -1,28 +1,31 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, Users, ShoppingBag, BarChart3, Shield, Store, Briefcase, User } from "lucide-react"
 import { AuthStatus } from "@/components/auth-status"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 export default function HomePage() {
+  const { t } = useLanguage()
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
+    <div className="min-h-screen bg-linear-to-b from-background to-muted/30">
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-8 md:py-16">
         <div className="text-center space-y-6 max-w-3xl mx-auto">
           <h1 className="text-4xl md:text-6xl font-bold text-balance">
-            Plataforma de Gestión de Eventos Agroproductivos
+            {t("home.title")}
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground text-pretty">
-            Conecta productores, organizadores y asistentes en un solo lugar. Gestiona eventos, productos y ventas de
-            manera eficiente.
+            {t("home.subtitle")}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             <Button asChild size="lg">
-              <Link href="/register">Comenzar Ahora</Link>
+              <Link href="/register">{t("home.startNow")}</Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href="/login">Iniciar Sesión</Link>
+              <Link href="/login">{t("home.login")}</Link>
             </Button>
           </div>
         </div>
@@ -36,17 +39,17 @@ export default function HomePage() {
             <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
               <Calendar className="w-6 h-6 text-primary" aria-hidden="true" />
             </div>
-            <h3 className="font-semibold text-lg">Gestión de Eventos</h3>
-            <p className="text-sm text-muted-foreground">Crea y administra eventos agroproductivos con facilidad</p>
+            <h3 className="font-semibold text-lg">{t("features.eventManagement")}</h3>
+            <p className="text-sm text-muted-foreground">{t("features.eventManagementDesc")}</p>
           </div>
 
           <div className="bg-card p-6 rounded-lg border space-y-3">
             <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
               <ShoppingBag className="w-6 h-6 text-primary" aria-hidden="true" />
             </div>
-            <h3 className="font-semibold text-lg">Catálogo de Productos</h3>
+            <h3 className="font-semibold text-lg">{t("features.productCatalog")}</h3>
             <p className="text-sm text-muted-foreground">
-              Muestra tus productos con descripciones detalladas e historias
+              {t("features.productCatalogDesc")}
             </p>
           </div>
 
@@ -54,24 +57,24 @@ export default function HomePage() {
             <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
               <Users className="w-6 h-6 text-primary" aria-hidden="true" />
             </div>
-            <h3 className="font-semibold text-lg">Control de Asistencia</h3>
-            <p className="text-sm text-muted-foreground">Sistema de QR para registro y seguimiento de asistentes</p>
+            <h3 className="font-semibold text-lg">{t("features.attendance")}</h3>
+            <p className="text-sm text-muted-foreground">{t("features.attendanceDesc")}</p>
           </div>
 
           <div className="bg-card p-6 rounded-lg border space-y-3">
             <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
               <BarChart3 className="w-6 h-6 text-primary" aria-hidden="true" />
             </div>
-            <h3 className="font-semibold text-lg">Reportes y Métricas</h3>
-            <p className="text-sm text-muted-foreground">Analiza ventas, asistencias y rendimiento de eventos</p>
+            <h3 className="font-semibold text-lg">{t("features.reports")}</h3>
+            <p className="text-sm text-muted-foreground">{t("features.reportsDesc")}</p>
           </div>
         </div>
 
         {/* Roles Section */}
         <div className="mt-20 space-y-8">
           <div className="text-center space-y-3">
-            <h2 className="text-3xl md:text-4xl font-bold">Roles y Funcionalidades</h2>
-            <p className="text-muted-foreground text-lg">La plataforma ofrece diferentes experiencias según tu rol</p>
+            <h2 className="text-3xl md:text-4xl font-bold">{t("home.roles")}</h2>
+            <p className="text-muted-foreground text-lg">{t("home.rolesSubtitle")}</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
@@ -83,8 +86,8 @@ export default function HomePage() {
                     <User className="w-5 h-5 text-blue-500" aria-hidden="true" />
                   </div>
                   <div>
-                    <CardTitle>Usuario Normal</CardTitle>
-                    <CardDescription>Asiste a eventos y descubre productos</CardDescription>
+                    <CardTitle>{t("roles.user")}</CardTitle>
+                    <CardDescription>{t("roles.userDesc")}</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -118,8 +121,8 @@ export default function HomePage() {
                     <Store className="w-5 h-5 text-green-500" aria-hidden="true" />
                   </div>
                   <div>
-                    <CardTitle>Vendedor</CardTitle>
-                    <CardDescription>Vende productos en eventos</CardDescription>
+                    <CardTitle>{t("roles.vendor")}</CardTitle>
+                    <CardDescription>{t("roles.vendorDesc")}</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -153,8 +156,8 @@ export default function HomePage() {
                     <Briefcase className="w-5 h-5 text-purple-500" aria-hidden="true" />
                   </div>
                   <div>
-                    <CardTitle>Organizador</CardTitle>
-                    <CardDescription>Crea y gestiona eventos</CardDescription>
+                    <CardTitle>{t("roles.organizer")}</CardTitle>
+                    <CardDescription>{t("roles.organizerDesc")}</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -188,8 +191,8 @@ export default function HomePage() {
                     <Shield className="w-5 h-5 text-red-500" aria-hidden="true" />
                   </div>
                   <div>
-                    <CardTitle>Administrador</CardTitle>
-                    <CardDescription>Supervisa la plataforma</CardDescription>
+                    <CardTitle>{t("roles.admin")}</CardTitle>
+                    <CardDescription>{t("roles.adminDesc")}</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -222,16 +225,16 @@ export default function HomePage() {
 
         {/* CTA Section */}
         <div className="mt-20 text-center space-y-6 bg-card p-12 rounded-lg border">
-          <h2 className="text-3xl font-bold">¿Listo para comenzar?</h2>
+          <h2 className="text-3xl font-bold">{t("home.ready")}</h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Únete a nuestra plataforma y comienza a gestionar eventos agroproductivos de manera profesional
+            {t("home.readyText")}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             <Button asChild size="lg">
-              <Link href="/register">Crear Cuenta</Link>
+              <Link href="/register">{t("home.createAccount")}</Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href="/login">Ya tengo cuenta</Link>
+              <Link href="/login">{t("home.haveAccount")}</Link>
             </Button>
           </div>
         </div>

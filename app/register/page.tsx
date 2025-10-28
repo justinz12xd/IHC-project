@@ -12,8 +12,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Link from "next/link"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 export default function RegisterPage() {
+  const { t } = useLanguage()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [fullName, setFullName] = useState("")
@@ -66,8 +68,8 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Crear Cuenta</CardTitle>
-          <CardDescription>Completa el formulario para registrarte en la plataforma</CardDescription>
+          <CardTitle className="text-2xl font-bold">{t("auth.registerTitle")}</CardTitle>
+          <CardDescription>{t("auth.registerSubtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleRegister} className="space-y-4">
@@ -78,7 +80,7 @@ export default function RegisterPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="fullName">Nombre completo</Label>
+              <Label htmlFor="fullName">{t("auth.fullName")}</Label>
               <Input
                 id="fullName"
                 type="text"
@@ -91,7 +93,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Correo electrónico</Label>
+              <Label htmlFor="email">{t("auth.email")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -104,7 +106,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
+              <Label htmlFor="password">{t("auth.password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -121,32 +123,32 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">Tipo de cuenta</Label>
+              <Label htmlFor="role">{t("auth.role")}</Label>
               <Select value={role} onValueChange={(value: any) => setRole(value)}>
                 <SelectTrigger id="role" aria-label="Seleccionar tipo de cuenta">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="normal">Usuario Normal</SelectItem>
-                  <SelectItem value="vendor">Vendedor</SelectItem>
-                  <SelectItem value="organizer">Organizador</SelectItem>
+                  <SelectItem value="normal">{t("roles.user")}</SelectItem>
+                  <SelectItem value="vendor">{t("roles.vendor")}</SelectItem>
+                  <SelectItem value="organizer">{t("roles.organizer")}</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                {role === "normal" && "Podrás registrarte y asistir a eventos"}
-                {role === "vendor" && "Podrás vender productos en eventos"}
-                {role === "organizer" && "Podrás crear y gestionar eventos"}
+                {role === "normal" && t("roles.userDesc")}
+                {role === "vendor" && t("roles.vendorDesc")}
+                {role === "organizer" && t("roles.organizerDesc")}
               </p>
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creando cuenta..." : "Crear Cuenta"}
+              {loading ? t("auth.creatingAccount") : t("auth.registerButton")}
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">
-              ¿Ya tienes cuenta?{" "}
+              {t("auth.hasAccount")}{" "}
               <Link href="/login" className="text-primary hover:underline">
-                Inicia sesión aquí
+                {t("auth.loginHere")}
               </Link>
             </p>
 

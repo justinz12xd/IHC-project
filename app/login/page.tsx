@@ -11,11 +11,14 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 export default function LoginPage() {
+  const { t } = useLanguage()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -27,6 +30,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setRemainingAttempts(null)
     setLoading(true)
 
     try {
@@ -45,6 +49,9 @@ export default function LoginPage() {
         router.refresh()
       } else {
         setError(result.error || "Error al iniciar sesión")
+        if (result.remainingAttempts !== undefined) {
+          setRemainingAttempts(result.remainingAttempts)
+        }
       }
     } catch (err: any) {
       console.error("Login error:", err)
@@ -58,19 +65,26 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Iniciar Sesión</CardTitle>
-          <CardDescription>Ingresa tus credenciales para acceder a la plataforma</CardDescription>
+          <CardTitle className="text-2xl font-bold">{t("auth.loginTitle")}</CardTitle>
+          <CardDescription>{t("auth.loginSubtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
               <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>
+                  {error}
+                  {remainingAttempts !== null && remainingAttempts > 0 && (
+                    <p className="mt-2 text-sm font-medium">
+                      Intentos restantes: {remainingAttempts}
+                    </p>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Correo electrónico</Label>
+              <Label htmlFor="email">{t("auth.email")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -83,7 +97,12 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">{t("auth.password")}</Label>
+                <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                  {t("auth.forgotPassword")}
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -96,13 +115,13 @@ export default function LoginPage() {
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+              {loading ? t("auth.loggingIn") : t("auth.loginButton")}
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">
-              ¿No tienes cuenta?{" "}
+              {t("auth.noAccount")}{" "}
               <Link href="/register" className="text-primary hover:underline">
-                Regístrate aquí
+                {t("auth.registerHere")}
               </Link>
             </p>
 

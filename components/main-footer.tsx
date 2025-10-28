@@ -39,21 +39,18 @@ export function MainFooter() {
             </div>
           </div>
 
-          {/* Roles */}
+          {/* Legal */}
           <div>
-            <h3 className="font-semibold mb-4">Para Roles</h3>
+            <h3 className="font-semibold mb-4">Legal</h3>
             <div className="space-y-2 text-sm">
-              <Link href="/vendor/dashboard" className="block text-muted-foreground hover:text-foreground transition-colors">
-                Vendedores
+              <Link href="/terms" className="block text-muted-foreground hover:text-foreground transition-colors">
+                Términos y Condiciones
               </Link>
-              <Link href="/organizer/dashboard" className="block text-muted-foreground hover:text-foreground transition-colors">
-                Organizadores
+              <Link href="/privacy" className="block text-muted-foreground hover:text-foreground transition-colors">
+                Política de Privacidad
               </Link>
-              <Link href="/admin/dashboard" className="block text-muted-foreground hover:text-foreground transition-colors">
-                Administradores
-              </Link>
-              <Link href="/temp-home" className="block text-orange-500/70 hover:text-orange-600 transition-colors">
-                Panel Dev
+              <Link href="/contact" className="block text-muted-foreground hover:text-foreground transition-colors">
+                Contacto
               </Link>
             </div>
           </div>

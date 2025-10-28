@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar, MapPin, Users, QrCode, Clock } from "lucide-react"
 import Link from "next/link"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 // Datos de ejemplo para mostrar la interfaz
 const mockEvents = [
@@ -60,6 +61,8 @@ const mockRegistrations = [
 ]
 
 export default function DashboardPage() {
+  const { t } = useLanguage()
+  
   // Filtrar eventos
   const upcomingEvents = mockEvents.filter(e => 
     e.status === "approved" && new Date(e.start_date) >= new Date()
@@ -107,25 +110,25 @@ export default function DashboardPage() {
           {attended && (
             <Button size="sm" variant="outline" className="flex-1">
               <QrCode className="h-4 w-4 mr-2" />
-              Ver Certificado
+              {t("dashboard.viewCertificate")}
             </Button>
           )}
           {registered && !attended && (
             <Button size="sm" variant="outline" className="flex-1" asChild>
               <Link href={`/events/${event.id}/qr`}>
                 <QrCode className="h-4 w-4 mr-2" />
-                Mi QR
+                {t("dashboard.myQR")}
               </Link>
             </Button>
           )}
           {!registered && !attended && (
             <Button size="sm" className="flex-1">
-              Registrarse
+              {t("dashboard.register")}
             </Button>
           )}
           <Button size="sm" variant="outline" asChild>
             <Link href={`/events/${event.id}`}>
-              Ver Detalles
+              {t("dashboard.viewDetails")}
             </Link>
           </Button>
         </div>
@@ -137,15 +140,15 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-balance mb-2">Eventos Agroproductivos</h1>
-          <p className="text-muted-foreground text-lg">Descubre y regístrate en eventos de productores locales</p>
+          <h1 className="text-4xl font-bold text-balance mb-2">{t("dashboard.title")}</h1>
+          <p className="text-muted-foreground text-lg">{t("dashboard.subtitle")}</p>
         </div>
 
         <Tabs defaultValue="upcoming" className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-3 mb-8">
-            <TabsTrigger value="upcoming">Próximos</TabsTrigger>
-            <TabsTrigger value="registered">Mis Registros</TabsTrigger>
-            <TabsTrigger value="attended">Asistidos</TabsTrigger>
+            <TabsTrigger value="upcoming">{t("dashboard.upcoming")}</TabsTrigger>
+            <TabsTrigger value="registered">{t("dashboard.registered")}</TabsTrigger>
+            <TabsTrigger value="attended">{t("dashboard.attended")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="upcoming" className="space-y-6">
@@ -158,8 +161,8 @@ export default function DashboardPage() {
             ) : (
               <div className="text-center py-12 bg-muted/50 rounded-lg">
                 <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No hay eventos próximos disponibles</h3>
-                <p className="text-muted-foreground">Los nuevos eventos aparecerán aquí cuando estén disponibles</p>
+                <h3 className="text-lg font-semibold mb-2">{t("dashboard.noUpcoming")}</h3>
+                <p className="text-muted-foreground">{t("dashboard.noUpcomingDesc")}</p>
               </div>
             )}
           </TabsContent>
@@ -174,10 +177,10 @@ export default function DashboardPage() {
             ) : (
               <div className="text-center py-12 bg-muted/50 rounded-lg">
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No tienes registros en eventos próximos</h3>
-                <p className="text-muted-foreground mb-4">Explora los eventos disponibles y regístrate</p>
+                <h3 className="text-lg font-semibold mb-2">{t("dashboard.noRegistered")}</h3>
+                <p className="text-muted-foreground mb-4">{t("dashboard.noRegisteredDesc")}</p>
                 <Button asChild>
-                  <Link href="#upcoming">Ver Eventos Disponibles</Link>
+                  <Link href="#upcoming">{t("home.features")}</Link>
                 </Button>
               </div>
             )}
@@ -193,8 +196,8 @@ export default function DashboardPage() {
             ) : (
               <div className="text-center py-12 bg-muted/50 rounded-lg">
                 <QrCode className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Aún no has asistido a ningún evento</h3>
-                <p className="text-muted-foreground">Los eventos a los que asistas aparecerán aquí</p>
+                <h3 className="text-lg font-semibold mb-2">{t("dashboard.noAttended")}</h3>
+                <p className="text-muted-foreground">{t("dashboard.noAttendedDesc")}</p>
               </div>
             )}
           </TabsContent>

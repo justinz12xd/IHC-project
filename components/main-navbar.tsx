@@ -17,69 +17,76 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Menu, Home, Calendar, Store, Users, LogIn, UserPlus, Settings, LogOut, User as UserIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getAuthState, logoutUser, type User } from "@/lib/auth/local-auth"
-
-const mainRoutes = [
-  {
-    title: "Inicio",
-    href: "/",
-    icon: Home,
-    description: "Página principal"
-  },
-  {
-    title: "Eventos",
-    href: "/dashboard",
-    icon: Calendar,
-    description: "Ver todos los eventos"
-  },
-  {
-    title: "Vendedores",
-    href: "/vendor/dashboard",
-    icon: Store,
-    description: "Catálogo de vendedores"
-  },
-  {
-    title: "Organizadores",
-    href: "/organizer/dashboard",
-    icon: Users,
-    description: "Panel de organizadores"
-  }
-]
-
-const authRoutes = [
-  {
-    title: "Iniciar Sesión",
-    href: "/login",
-    icon: LogIn,
-    variant: "outline" as const
-  },
-  {
-    title: "Registrarse",
-    href: "/register",
-    icon: UserPlus,
-    variant: "default" as const
-  }
-]
-
-const devRoutes = [
-  {
-    title: "Panel Dev",
-    href: "/temp-home",
-    icon: Settings,
-    description: "Acceso de desarrollo"
-  },
-  {
-    title: "Admin",
-    href: "/admin/dashboard",
-    icon: Settings,
-    description: "Panel de administración"
-  }
-]
+import { CommandPalette } from "@/components/command-palette"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { LanguageToggle } from "@/components/language-toggle"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 export function MainNavbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [, setLanguageUpdate] = useState(0) // Para forzar re-render cuando cambia idioma
   const pathname = usePathname()
   const router = useRouter()
+  const { t, language } = useLanguage()
+
+  // Definir rutas con traducciones
+  const mainRoutes = [
+    {
+      title: t("nav.home"),
+      href: "/",
+      icon: Home,
+      description: t("nav.home")
+    },
+    {
+      title: t("nav.events"),
+      href: "/dashboard",
+      icon: Calendar,
+      description: t("nav.events")
+    },
+    {
+      title: t("nav.vendors"),
+      href: "/vendor/dashboard",
+      icon: Store,
+      description: t("nav.vendors")
+    },
+    {
+      title: t("nav.organizers"),
+      href: "/organizer/dashboard",
+      icon: Users,
+      description: t("nav.organizers")
+    }
+  ]
+
+  const authRoutes = [
+    {
+      title: t("nav.login"),
+      href: "/login",
+      icon: LogIn,
+      variant: "outline" as const
+    },
+    {
+      title: t("nav.register"),
+      href: "/register",
+      icon: UserPlus,
+      variant: "default" as const
+    }
+  ]
+
+  const devRoutes = [
+    {
+      title: "Panel Dev",
+      href: "/temp-home",
+      icon: Settings,
+      description: "Acceso de desarrollo"
+    },
+    {
+      title: "Admin",
+      href: "/admin/dashboard",
+      icon: Settings,
+      description: "Panel de administración"
+    }
+  ]
 
   // Verificar estado de autenticación al cargar
   useEffect(() => {
@@ -97,6 +104,11 @@ export function MainNavbar() {
       window.removeEventListener("auth-change", checkAuth)
     }
   }, [])
+
+  // Re-renderizar cuando cambia el idioma
+  useEffect(() => {
+    setLanguageUpdate(prev => prev + 1)
+  }, [language])
 
   const handleLogout = () => {
     logoutUser()
@@ -231,14 +243,14 @@ export function MainNavbar() {
             <DropdownMenuItem asChild>
               <Link href="/profile" className="cursor-pointer">
                 <UserIcon className="mr-2 h-4 w-4" />
-                Mi Perfil
+                {t("nav.profile")}
               </Link>
             </DropdownMenuItem>
             {currentUser.role === "admin" && (
               <DropdownMenuItem asChild>
                 <Link href="/admin/dashboard" className="cursor-pointer">
                   <Settings className="mr-2 h-4 w-4" />
-                  Panel Admin
+                  {t("nav.admin")}
                 </Link>
               </DropdownMenuItem>
             )}
@@ -261,7 +273,7 @@ export function MainNavbar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
               <LogOut className="mr-2 h-4 w-4" />
-              Cerrar Sesión
+              {t("nav.logout")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -315,6 +327,17 @@ export function MainNavbar() {
             <NavLinks />
           </div>
 
+          {/* Search */}
+          <div className="hidden md:flex items-center gap-2">
+            <CommandPalette />
+          </div>
+
+          {/* Theme and Language */}
+          <div className="hidden md:flex items-center gap-1">
+            <ThemeToggle />
+            <LanguageToggle />
+          </div>
+
           {/* Desktop Auth Buttons */}
           <div className="hidden md:flex">
             <AuthButtons />
@@ -330,11 +353,17 @@ export function MainNavbar() {
             </SheetTrigger>
             <SheetContent side="right" className="w-80">
               <div className="flex flex-col space-y-4 mt-6">
-                <div className="flex items-center space-x-2 mb-4">
-                  <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                    <Calendar className="h-5 w-5 text-primary-foreground" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+                      <Calendar className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <span className="font-bold text-lg">Eventos Agro</span>
                   </div>
-                  <span className="font-bold text-lg">Eventos Agro</span>
+                  <div className="flex items-center gap-1">
+                    <ThemeToggle />
+                    <LanguageToggle />
+                  </div>
                 </div>
                 
                 <div className="flex flex-col space-y-2">

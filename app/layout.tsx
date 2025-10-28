@@ -1,17 +1,13 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { MainNavbar } from '@/components/main-navbar'
 import { MainFooter } from '@/components/main-footer'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
   title: 'AgroMarket Eventos',
-  description: 'Created by Us',
-  generator: 'My mind',
+  description: 'Plataforma de Gestión de Eventos Agroproductivos',
+  generator: 'Next.js',
 }
 
 export default function RootLayout({

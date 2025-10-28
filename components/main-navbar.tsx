@@ -1,12 +1,22 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, Home, Calendar, Store, Users, LogIn, UserPlus, Settings } from "lucide-react"
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Menu, Home, Calendar, Store, Users, LogIn, UserPlus, Settings, LogOut, User as UserIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getAuthState, logoutUser, type User } from "@/lib/auth/local-auth"
 
 const mainRoutes = [
   {
@@ -67,7 +77,73 @@ const devRoutes = [
 
 export function MainNavbar() {
   const [isOpen, setIsOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const pathname = usePathname()
+  const router = useRouter()
+
+  // Verificar estado de autenticación al cargar
+  useEffect(() => {
+    const checkAuth = () => {
+      const authState = getAuthState()
+      setCurrentUser(authState.user)
+    }
+    
+    checkAuth()
+    
+    // Escuchar cambios de autenticación
+    window.addEventListener("auth-change", checkAuth)
+    
+    return () => {
+      window.removeEventListener("auth-change", checkAuth)
+    }
+  }, [])
+
+  const handleLogout = () => {
+    logoutUser()
+    setIsOpen(false)
+    router.push("/")
+  }
+
+  const getUserInitials = (user: User) => {
+    if (user.fullName) {
+      const parts = user.fullName.split(" ")
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase()
+      }
+      return parts[0][0].toUpperCase()
+    }
+    return user.email[0].toUpperCase()
+  }
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case "admin":
+        return "bg-red-500"
+      case "organizer":
+        return "bg-blue-500"
+      case "vendor":
+        return "bg-green-500"
+      case "user":
+        return "bg-gray-500"
+      default:
+        return "bg-gray-500"
+    }
+  }
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case "admin":
+        return "Admin"
+      case "organizer":
+        return "Organizador"
+      case "vendor":
+        return "Vendedor"
+      case "user":
+        return "Usuario"
+      default:
+        return role
+    }
+  }
 
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <>
@@ -124,31 +200,101 @@ export function MainNavbar() {
     </>
   )
 
-  const AuthButtons = ({ mobile = false }: { mobile?: boolean }) => (
-    <div className={cn("flex gap-2", mobile ? "flex-col w-full" : "")}>
-      {authRoutes.map((route) => {
-        const Icon = route.icon
-        
-        return (
-          <Button
-            key={route.href}
-            asChild
-            variant={route.variant}
-            size={mobile ? "default" : "sm"}
-            className={mobile ? "w-full justify-start" : ""}
-          >
-            <Link
-              href={route.href}
-              onClick={() => mobile && setIsOpen(false)}
+  const AuthButtons = ({ mobile = false }: { mobile?: boolean }) => {
+    // Si está autenticado, mostrar menú de usuario
+    if (currentUser) {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size={mobile ? "default" : "sm"} className={cn("gap-2", mobile ? "w-full justify-start" : "")}>
+              <Avatar className="h-6 w-6">
+                <AvatarFallback className={cn("text-xs", getRoleBadgeColor(currentUser.role))}>
+                  {getUserInitials(currentUser)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="font-medium">{currentUser.fullName || currentUser.email}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{currentUser.fullName || "Usuario"}</p>
+                <p className="text-xs leading-none text-muted-foreground">{currentUser.email}</p>
+                <p className="text-xs leading-none text-muted-foreground mt-1">
+                  <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getRoleBadgeColor(currentUser.role), "text-white")}>
+                    {getRoleLabel(currentUser.role)}
+                  </span>
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/profile" className="cursor-pointer">
+                <UserIcon className="mr-2 h-4 w-4" />
+                Mi Perfil
+              </Link>
+            </DropdownMenuItem>
+            {currentUser.role === "admin" && (
+              <DropdownMenuItem asChild>
+                <Link href="/admin/dashboard" className="cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Panel Admin
+                </Link>
+              </DropdownMenuItem>
+            )}
+            {currentUser.role === "organizer" && (
+              <DropdownMenuItem asChild>
+                <Link href="/organizer/dashboard" className="cursor-pointer">
+                  <Users className="mr-2 h-4 w-4" />
+                  Panel Organizador
+                </Link>
+              </DropdownMenuItem>
+            )}
+            {currentUser.role === "vendor" && (
+              <DropdownMenuItem asChild>
+                <Link href="/vendor/dashboard" className="cursor-pointer">
+                  <Store className="mr-2 h-4 w-4" />
+                  Panel Vendedor
+                </Link>
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
+              <LogOut className="mr-2 h-4 w-4" />
+              Cerrar Sesión
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    }
+
+    // Si no está autenticado, mostrar botones de login/registro
+    return (
+      <div className={cn("flex gap-2", mobile ? "flex-col w-full" : "")}>
+        {authRoutes.map((route) => {
+          const Icon = route.icon
+          
+          return (
+            <Button
+              key={route.href}
+              asChild
+              variant={route.variant}
+              size={mobile ? "default" : "sm"}
+              className={mobile ? "w-full justify-start" : ""}
             >
-              <Icon className="h-4 w-4 mr-2" />
-              {route.title}
-            </Link>
-          </Button>
-        )
-      })}
-    </div>
-  )
+              <Link
+                href={route.href}
+                onClick={() => mobile && setIsOpen(false)}
+              >
+                <Icon className="h-4 w-4 mr-2" />
+                {route.title}
+              </Link>
+            </Button>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
@@ -204,14 +350,16 @@ export function MainNavbar() {
         </div>
       </div>
 
-      {/* Breadcrumb opcional para contexto */}
-      <div className="border-t bg-muted/30 py-2">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center text-sm text-muted-foreground">
-            <span>🚧 Modo de desarrollo - Sin autenticación activa</span>
+      {/* Banner de desarrollo - solo mostrar cuando NO está autenticado */}
+      {!currentUser && (
+        <div className="border-t bg-muted/30 py-2">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center text-sm text-muted-foreground">
+              <span>🚧 Modo de desarrollo - Sin autenticación activa</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </nav>
   )
 }

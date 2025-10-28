@@ -181,6 +181,11 @@ export function loginUser(email: string, password: string): { success: boolean; 
     }
     saveAuthState(authState)
     
+    // Disparar evento para notificar cambios
+    try {
+      window.dispatchEvent(new CustomEvent("auth-change"))
+    } catch {}
+    
     return { success: true, user: authUser }
   } catch (error) {
     console.error("Login error:", error)

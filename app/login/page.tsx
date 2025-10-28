@@ -34,9 +34,15 @@ export default function LoginPage() {
       console.log("[login page] loginUser result:", result)
 
       if (result.success && result.user) {
+        // Pequeño delay para asegurar que el evento auth-change se procese
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
         // Redirigir según el rol del usuario
         const redirectPath = getRedirectPath(result.user.role)
         router.push(redirectPath)
+        
+        // Forzar recarga del estado después de la redirección
+        router.refresh()
       } else {
         setError(result.error || "Error al iniciar sesión")
       }

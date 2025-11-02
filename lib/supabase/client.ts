@@ -1,20 +1,18 @@
-import { createBrowserClient as createSupabaseBrowserClient } from "@supabase/ssr"
-
-let client: ReturnType<typeof createSupabaseBrowserClient> | null = null
-
-export function getSupabaseBrowserClient() {
-  if (client) {
-    return client
-  }
-
-  client = createSupabaseBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
-
-  return client
-}
+import { createBrowserClient as createClient } from "@supabase/ssr"
 
 export function createBrowserClient() {
-  return getSupabaseBrowserClient()
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      db: {
+        schema: 'public'
+      },
+      global: {
+        headers: {
+          'Prefer': 'return=representation'
+        }
+      }
+    }
+  )
 }

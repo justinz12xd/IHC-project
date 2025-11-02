@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { loginUser, getRedirectPath, initializeTestUsers } from "@/lib/auth/local-auth"
+import { loginUser, getRedirectPath } from "@/lib/auth/supabase-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,40 +18,25 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
-  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-
-  // Inicializar usuarios de prueba
-  useEffect(() => {
-    initializeTestUsers()
-  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    setRemainingAttempts(null)
     setLoading(true)
 
     try {
-      const result = loginUser(email, password)
+      const result = await loginUser(email, password)
       console.log("[login page] loginUser result:", result)
 
       if (result.success && result.user) {
-        // Pequeño delay para asegurar que el evento auth-change se procese
-        await new Promise(resolve => setTimeout(resolve, 100))
-        
         // Redirigir según el rol del usuario
         const redirectPath = getRedirectPath(result.user.role)
         router.push(redirectPath)
-        
-        // Forzar recarga del estado después de la redirección
         router.refresh()
       } else {
         setError(result.error || "Error al iniciar sesión")
-        if (result.remainingAttempts !== undefined) {
-          setRemainingAttempts(result.remainingAttempts)
-        }
       }
     } catch (err: any) {
       console.error("Login error:", err)
@@ -72,14 +57,7 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
               <Alert variant="destructive">
-                <AlertDescription>
-                  {error}
-                  {remainingAttempts !== null && remainingAttempts > 0 && (
-                    <p className="mt-2 text-sm font-medium">
-                      Intentos restantes: {remainingAttempts}
-                    </p>
-                  )}
-                </AlertDescription>
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
@@ -124,19 +102,6 @@ export default function LoginPage() {
                 {t("auth.registerHere")}
               </Link>
             </p>
-
-            {/* Usuarios de prueba - Solo para desarrollo */}
-            {process.env.NODE_ENV === "development" && (
-              <div className="mt-4 p-3 bg-muted rounded-md">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Usuarios de prueba:</p>
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <p>admin@test.com / 123456 (Admin)</p>
-                  <p>organizer@test.com / 123456 (Organizador)</p>
-                  <p>vendor@test.com / 123456 (Vendedor)</p>
-                  <p>user@test.com / 123456 (Usuario)</p>
-                </div>
-              </div>
-            )}
           </form>
         </CardContent>
       </Card>

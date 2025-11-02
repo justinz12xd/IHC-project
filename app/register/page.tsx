@@ -2,9 +2,9 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { registerUser, getRedirectPath, initializeTestUsers } from "@/lib/auth/local-auth"
+import { registerUser, getRedirectPath } from "@/lib/auth/supabase-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,18 +24,13 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  // Inicializar usuarios de prueba
-  useEffect(() => {
-    initializeTestUsers()
-  }, [])
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
 
     try {
-      const result = registerUser({
+      const result = await registerUser({
         email,
         password,
         fullName,
@@ -151,19 +146,6 @@ export default function RegisterPage() {
                 {t("auth.loginHere")}
               </Link>
             </p>
-
-            {/* Usuarios de prueba - Solo para desarrollo */}
-            {process.env.NODE_ENV === "development" && (
-              <div className="mt-4 p-3 bg-muted rounded-md">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Usuarios de prueba:</p>
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <p>admin@test.com / 123456 (Admin)</p>
-                  <p>organizer@test.com / 123456 (Organizador)</p>
-                  <p>vendor@test.com / 123456 (Vendedor)</p>
-                  <p>user@test.com / 123456 (Usuario)</p>
-                </div>
-              </div>
-            )}
           </form>
         </CardContent>
       </Card>

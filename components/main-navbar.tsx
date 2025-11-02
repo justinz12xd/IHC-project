@@ -16,7 +16,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Menu, Home, Calendar, Store, Users, LogIn, UserPlus, Settings, LogOut, User as UserIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getAuthState, logoutUser, type User } from "@/lib/auth/local-auth"
+import { getAuthState, getAuthStateAsync, logoutUser, type User } from "@/lib/auth/supabase-auth"
 import { CommandPalette } from "@/components/command-palette"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LanguageToggle } from "@/components/language-toggle"
@@ -90,8 +90,8 @@ export function MainNavbar() {
 
   // Verificar estado de autenticación al cargar
   useEffect(() => {
-    const checkAuth = () => {
-      const authState = getAuthState()
+    const checkAuth = async () => {
+      const authState = await getAuthStateAsync()
       setCurrentUser(authState.user)
     }
     
@@ -110,8 +110,9 @@ export function MainNavbar() {
     setLanguageUpdate(prev => prev + 1)
   }, [language])
 
-  const handleLogout = () => {
-    logoutUser()
+  const handleLogout = async () => {
+    await logoutUser()
+    setCurrentUser(null)
     setIsOpen(false)
     router.push("/")
   }
@@ -379,16 +380,6 @@ export function MainNavbar() {
         </div>
       </div>
 
-      {/* Banner de desarrollo - solo mostrar cuando NO está autenticado */}
-      {!currentUser && (
-        <div className="border-t bg-muted/30 py-2">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center text-sm text-muted-foreground">
-              <span>🚧 Modo de desarrollo - Sin autenticación activa</span>
-            </div>
-          </div>
-        </div>
-      )}
     </nav>
   )
 }

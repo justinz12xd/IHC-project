@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
@@ -30,18 +31,21 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
 
     const formData = new FormData(e.currentTarget)
     const data = {
-      vendor_id: vendorId,
-      name: formData.get("name") as string,
-      description: formData.get("description") as string,
-      benefits: formData.get("benefits") as string,
-      creation_story: formData.get("creation_story") as string,
-      image_url: (formData.get("image_url") as string) || null,
+      id_vendedor: vendorId,
+      nombre: formData.get("nombre") as string,
+      descripcion: formData.get("descripcion") as string,
+      precio_unitario: parseFloat(formData.get("precio_unitario") as string) || 0,
+      stock_inicial: parseInt(formData.get("stock_inicial") as string) || 0,
+      categoria: formData.get("categoria") as string || null,
     }
 
     try {
       if (product) {
         // Update existing product
-        const { error } = await supabase.from("products").update(data).eq("id", product.id)
+        const { error } = await supabase
+          .from("producto")
+          .update(data)
+          .eq("id_producto", product.id_producto)
 
         if (error) throw error
 
@@ -51,7 +55,9 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
         })
       } else {
         // Create new product
-        const { error } = await supabase.from("products").insert(data)
+        const { error } = await supabase
+          .from("producto")
+          .insert(data)
 
         if (error) throw error
 
@@ -63,11 +69,11 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
 
       router.push("/vendor/dashboard")
       router.refresh()
-    } catch (error) {
-      console.error("[v0] Error saving product:", error)
+    } catch (error: any) {
+      console.error("Error saving product:", error)
       toast({
         title: "Error",
-        description: "No se pudo guardar el producto",
+        description: error.message || "No se pudo guardar el producto",
         variant: "destructive",
       })
     } finally {
@@ -80,32 +86,32 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
       <Card>
         <CardHeader>
           <CardTitle>Información del Producto</CardTitle>
-          <CardDescription>Completa los detalles de tu producto para que los usuarios lo conozcan</CardDescription>
+          <CardDescription>Completa los detalles de tu producto para agregarlo al inventario</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="name">
+            <Label htmlFor="nombre">
               Nombre del Producto <span className="text-destructive">*</span>
             </Label>
             <Input
-              id="name"
-              name="name"
+              id="nombre"
+              name="nombre"
               placeholder="Ej: Miel de Abeja Orgánica"
-              defaultValue={product?.name}
+              defaultValue={product?.nombre}
               required
               maxLength={100}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">
+            <Label htmlFor="descripcion">
               Descripción <span className="text-destructive">*</span>
             </Label>
             <Textarea
-              id="description"
-              name="description"
+              id="descripcion"
+              name="descripcion"
               placeholder="Describe tu producto de manera clara y atractiva"
-              defaultValue={product?.description}
+              defaultValue={product?.descripcion}
               required
               rows={4}
               maxLength={500}
@@ -114,42 +120,59 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
             <p className="text-xs text-muted-foreground">Máximo 500 caracteres</p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="benefits">Beneficios</Label>
-            <Input
-              id="benefits"
-              name="benefits"
-              placeholder="Ej: Natural, Orgánico, Sin aditivos"
-              defaultValue={product?.benefits}
-              maxLength={200}
-            />
-            <p className="text-xs text-muted-foreground">Separa los beneficios con comas</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="precio_unitario">
+                Precio Unitario (S/) <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="precio_unitario"
+                name="precio_unitario"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                defaultValue={product?.precio_unitario}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="stock_inicial">
+                Stock Inicial <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="stock_inicial"
+                name="stock_inicial"
+                type="number"
+                min="0"
+                placeholder="0"
+                defaultValue={product?.stock_inicial}
+                required
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="creation_story">Historia del Producto</Label>
-            <Textarea
-              id="creation_story"
-              name="creation_story"
-              placeholder="Cuenta la historia detrás de tu producto"
-              defaultValue={product?.creation_story}
-              rows={4}
-              maxLength={500}
-              className="resize-none"
-            />
-            <p className="text-xs text-muted-foreground">Comparte el origen y motivación detrás de tu producto</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="image_url">URL de Imagen</Label>
-            <Input
-              id="image_url"
-              name="image_url"
-              type="url"
-              placeholder="https://ejemplo.com/imagen.jpg"
-              defaultValue={product?.image_url}
-            />
-            <p className="text-xs text-muted-foreground">Opcional: URL de una imagen de tu producto</p>
+            <Label htmlFor="categoria">Categoría</Label>
+            <Select name="categoria" defaultValue={product?.categoria || ""}>
+              <SelectTrigger id="categoria">
+                <SelectValue placeholder="Selecciona una categoría" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Sin categoría</SelectItem>
+                <SelectItem value="frutas">Frutas</SelectItem>
+                <SelectItem value="verduras">Verduras</SelectItem>
+                <SelectItem value="lacteos">Lácteos</SelectItem>
+                <SelectItem value="carnes">Carnes</SelectItem>
+                <SelectItem value="granos">Granos y Cereales</SelectItem>
+                <SelectItem value="miel">Miel y Derivados</SelectItem>
+                <SelectItem value="artesania">Artesanía</SelectItem>
+                <SelectItem value="bebidas">Bebidas</SelectItem>
+                <SelectItem value="otros">Otros</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Opcional: ayuda a los clientes a encontrar tu producto</p>
           </div>
 
           <div className="flex gap-4 pt-4">

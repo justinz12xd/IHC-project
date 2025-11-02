@@ -61,11 +61,7 @@ export function MainFooter() {
           <p className="text-sm text-muted-foreground">
             © 2025 Eventos Agro. Todos los derechos reservados.
           </p>
-          <div className="flex items-center space-x-4 mt-4 md:mt-0">
-            <p className="text-xs text-muted-foreground">
-              🚧 Modo desarrollo - Sin autenticación
-            </p>
-          </div>
+
         </div>
       </div>
     </footer>

@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { updateUserProfile, changePassword } from "@/lib/auth/local-auth"
+import { updateUserProfile, updatePassword } from "@/lib/auth/supabase-auth"
+import { createBrowserClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -19,10 +20,14 @@ export default function ProfilePage() {
   const { t } = useLanguage()
   const { user, isAuthenticated, loading } = useAuth()
   const router = useRouter()
+  const supabase = createBrowserClient()
+  
+  // Estado para datos reales del usuario
+  const [userData, setUserData] = useState<any>(null)
+  const [loadingData, setLoadingData] = useState(true)
   
   // Estado para edición de perfil
   const [fullName, setFullName] = useState("")
-  const [phone, setPhone] = useState("")
   const [isEditing, setIsEditing] = useState(false)
   const [profileMessage, setProfileMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   
@@ -36,13 +41,45 @@ export default function ProfilePage() {
     if (!loading && !isAuthenticated) {
       router.push("/login")
     }
-    if (user) {
-      setFullName(user.fullName || "")
-      setPhone(user.phone || "")
-    }
-  }, [user, isAuthenticated, loading, router])
+  }, [isAuthenticated, loading, router])
 
-  if (loading) {
+  // Cargar datos reales del usuario desde Supabase
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!user?.id) return
+      
+      try {
+        console.log("[profile] Loading user data for:", user.id)
+        const { data, error } = await supabase
+          .from('usuario')
+          .select('*')
+          .eq('auth_id', user.id)
+          .single()
+        
+        if (error) {
+          console.error("Error loading user data:", error.message, error.code, error.details)
+          // Si hay error 406, verificar RLS policies
+          if (error.code === 'PGRST116') {
+            console.error("No se encontró el usuario en la tabla 'usuario'")
+          }
+        } else if (data) {
+          console.log("[profile] User data loaded:", data)
+          setUserData(data)
+          setFullName((data.nombre || '') + (data.apellido ? ` ${data.apellido}` : ''))
+        }
+      } catch (err: any) {
+        console.error("Error loading user data:", err.message || err)
+      } finally {
+        setLoadingData(false)
+      }
+    }
+    
+    if (user) {
+      loadUserData()
+    }
+  }, [user, supabase])
+
+  if (loading || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -53,7 +90,11 @@ export default function ProfilePage() {
     )
   }
 
-  if (!user) return null
+  if (!user || !userData) return null
+
+  const displayName = fullName || userData.nombre || user.email
+  const displayEmail = userData.correo || user.email
+  const displayRole = userData.rol || user.role
 
   const roleLabels = {
     normal: "Usuario",
@@ -62,19 +103,26 @@ export default function ProfilePage() {
     admin: "Administrador",
   }
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     setProfileMessage(null)
-    const result = updateUserProfile({ fullName, phone })
+    const result = await updateUserProfile({ fullName })
     
     if (result.success) {
       setProfileMessage({ type: "success", text: t("profile.updated") })
       setIsEditing(false)
+      // Recargar datos
+      const { data } = await supabase
+        .from('usuario')
+        .select('*')
+        .eq('auth_id', user.id)
+        .single()
+      if (data) setUserData(data)
     } else {
       setProfileMessage({ type: "error", text: result.error || "Error al actualizar perfil" })
     }
   }
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     setPasswordMessage(null)
     
     if (newPassword !== confirmPassword) {
@@ -87,7 +135,7 @@ export default function ProfilePage() {
       return
     }
     
-    const result = changePassword(currentPassword, newPassword)
+    const result = await updatePassword(newPassword)
     
     if (result.success) {
       setPasswordMessage({ type: "success", text: t("profile.passwordUpdated") })
@@ -169,22 +217,31 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="phone">{t("auth.phone")} ({t("common.optional")})</Label>
+                    <Label htmlFor="email">{t("auth.email")}</Label>
                     <Input
-                      id="phone"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      disabled={!isEditing}
-                      placeholder="+51 999 999 999"
+                      id="email"
+                      type="email"
+                      value={displayEmail}
+                      disabled
+                      className="bg-muted"
                     />
+                    <p className="text-xs text-muted-foreground">El correo no se puede cambiar</p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="role">{t("auth.role")}</Label>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-sm">
-                        {roleLabels[user.role as keyof typeof roleLabels] || "Usuario"}
+                        {roleLabels[displayRole as keyof typeof roleLabels] || "Usuario"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Estado de Cuenta</Label>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={userData?.estado === 'activo' ? 'default' : 'destructive'} className="text-sm">
+                        {userData?.estado === 'activo' ? 'Activa' : 'Inactiva'}
                       </Badge>
                     </div>
                   </div>
@@ -192,7 +249,7 @@ export default function ProfilePage() {
                   <div className="pt-4 border-t">
                     <p className="text-sm text-muted-foreground">
                       {t("profile.memberSince")}{" "}
-                      {new Date(user.createdAt).toLocaleDateString("es-ES", {
+                      {new Date(userData?.fecha_registro || user.createdAt).toLocaleDateString("es-ES", {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
@@ -210,8 +267,7 @@ export default function ProfilePage() {
                           variant="outline"
                           onClick={() => {
                             setIsEditing(false)
-                            setFullName(user.fullName || "")
-                            setPhone(user.phone || "")
+                            setFullName((userData.nombre || '') + (userData.apellido ? ` ${userData.apellido}` : ''))
                             setProfileMessage(null)
                           }}
                         >

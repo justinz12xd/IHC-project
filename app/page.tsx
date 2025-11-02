@@ -6,9 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Calendar, Users, ShoppingBag, BarChart3, Shield, Store, Briefcase, User } from "lucide-react"
 import { AuthStatus } from "@/components/auth-status"
 import { useLanguage } from "@/lib/i18n/language-context"
+import { useAuth } from "@/lib/auth/supabase-auth"
 
 export default function HomePage() {
   const { t } = useLanguage()
+  const { user } = useAuth()
+  
   return (
     <div className="min-h-screen bg-linear-to-b from-background to-muted/30">
       {/* Hero Section */}
@@ -20,14 +23,16 @@ export default function HomePage() {
           <p className="text-lg md:text-xl text-muted-foreground text-pretty">
             {t("home.subtitle")}
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <Button asChild size="lg">
-              <Link href="/register">{t("home.startNow")}</Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="/login">{t("home.login")}</Link>
-            </Button>
-          </div>
+          {!user && (
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+              <Button asChild size="lg">
+                <Link href="/register">{t("home.startNow")}</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link href="/login">{t("home.login")}</Link>
+              </Button>
+            </div>
+          )}
         </div>
 
        
@@ -229,14 +234,16 @@ export default function HomePage() {
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             {t("home.readyText")}
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <Button asChild size="lg">
-              <Link href="/register">{t("home.createAccount")}</Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="/login">{t("home.haveAccount")}</Link>
-            </Button>
-          </div>
+          {!user && (
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+              <Button asChild size="lg">
+                <Link href="/register">{t("home.createAccount")}</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link href="/login">{t("home.haveAccount")}</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -203,18 +203,24 @@ export async function registerUser(data: {
     if (data.password.length < 6) {
       return { success: false, error: "La contraseña debe tener al menos 6 caracteres" }
     }
+
+    const nombre = data.fullName.split(" ")[0] || data.fullName
+    const apellido = data.fullName.split(" ").slice(1).join(" ") || "-"
+    const rolEspanol = mapRoleToSpanish(data.role)
+
     // Registrar usuario con Supabase Auth
     const { data: authData, error: signUpError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
         data: {
-          nombre: data.fullName.split(" ")[0] || data.fullName,
-          apellido: data.fullName.split(" ").slice(1).join(" ") || "",
+          nombre: nombre,
+          apellido: apellido,
           rol: data.role
         }
       }
     })
+    
     if (signUpError) {
       console.error("[supabase-auth] Sign up error:", signUpError)
       return {
@@ -224,67 +230,104 @@ export async function registerUser(data: {
           : signUpError.message
       }
     }
+    
     if (!authData.user) {
       return { success: false, error: "Error al crear la cuenta" }
     }
-    // Crear registro en la tabla 'usuario'
-    const nombreParts = data.fullName.trim().split(" ")
-    const nombre = nombreParts[0] || data.fullName
-    const apellido = nombreParts.slice(1).join(" ") || ""
     
-    console.log("[supabase-auth] Intentando crear usuario en tabla...")
-    
-    // Esperar un momento para que el trigger se ejecute
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Verificar si el trigger ya creó el usuario
-    const { data: existingUser } = await supabase
-      .from('usuario')
-      .select('auth_id')
-      .eq('auth_id', authData.user.id)
-      .maybeSingle()
-    
-    if (existingUser) {
-      console.log("[supabase-auth] Usuario ya existe en tabla (creado por trigger)")
-    } else {
-      // Intentar crear el registro manualmente
-      try {
-        const { data: insertData, error: usuarioError } = await supabase
+    console.log("[supabase-auth] ✅ Usuario creado en auth.users:", authData.user.id)
+
+    // Crear registro en la tabla 'usuario' manualmente (sin depender de triggers)
+    try {
+      console.log("[supabase-auth] 📝 Intentando insertar usuario:", {
+        auth_id: authData.user.id,
+        correo: data.email,
+        nombre: nombre,
+        apellido: apellido,
+        rol: rolEspanol
+      })
+
+      // Primero verificar si ya existe un usuario con este auth_id
+      const { data: existingUser } = await supabase
+        .from('usuario')
+        .select('*')
+        .eq('auth_id', authData.user.id)
+        .maybeSingle()
+
+      let usuarioData = existingUser
+
+      // Si no existe, insertarlo
+      if (!existingUser) {
+        const { data: newUser, error: insertError } = await supabase
           .from('usuario')
           .insert({
             auth_id: authData.user.id,
             correo: data.email,
             nombre: nombre,
             apellido: apellido,
-            rol: mapRoleToSpanish(data.role),  // Convertir a español
-            estado: "activo",
-            password_hash: null  // El hash está en auth.users, no aquí
+            rol: rolEspanol,
+            estado: 'activo'
           })
           .select()
           .single()
-        
-        if (usuarioError) {
-          // Solo mostrar error si tiene contenido real
-          if (usuarioError.message || usuarioError.code) {
-            console.error("[supabase-auth] Error al crear usuario en tabla:", {
-              message: usuarioError.message,
-              code: usuarioError.code,
-              details: usuarioError.details,
-              hint: usuarioError.hint
-            })
-            
-            // Si el error es de duplicado, está bien (race condition con el trigger)
-            if (usuarioError.code === '23505') {
-              console.log("[supabase-auth] Usuario ya existe (race condition con trigger)")
-            }
-          }
-        } else if (insertData) {
-          console.log("[supabase-auth] Usuario creado exitosamente en tabla:", insertData)
+
+        usuarioData = newUser
+
+        console.log("[supabase-auth] 📋 Resultado insert:", { 
+          data: newUser, 
+          error: insertError,
+          errorDetails: insertError ? JSON.stringify(insertError) : null
+        })
+
+        if (insertError) {
+          console.error("[supabase-auth] ❌ Error insertando en tabla usuario:", insertError)
+          console.error("[supabase-auth] Error stringificado:", JSON.stringify(insertError, null, 2))
+          // No fallar el registro completo, el usuario puede usar auth.users
         }
-      } catch (err: any) {
-        console.warn("[supabase-auth] Exception al crear usuario:", err.message || err)
+      } else {
+        console.log("[supabase-auth] ℹ️ Usuario ya existía en tabla usuario")
       }
+
+      if (!usuarioData) {
+        console.error("[supabase-auth] ❌ No se pudo obtener datos del usuario")
+        // No fallar el registro completo, el usuario puede usar auth.users
+      } else if (usuarioData?.id_usuario) {
+        console.log("[supabase-auth] ✅ Usuario en tabla usuario con id:", usuarioData.id_usuario)
+
+        // Si es vendedor, crear registro en tabla vendedor
+        if (data.role === 'vendor' && usuarioData.id_usuario) {
+          // Verificar si ya existe el vendedor
+          const { data: existingVendor } = await supabase
+            .from('vendedor')
+            .select('*')
+            .eq('id_vendedor', usuarioData.id_usuario)
+            .maybeSingle()
+
+          if (!existingVendor) {
+            const { error: vendedorError } = await supabase
+              .from('vendedor')
+              .insert({
+                id_vendedor: usuarioData.id_usuario, // Usar el id_usuario, NO el auth_id
+                bio: 'Vendedor de productos agro productivos',
+                historia: '',
+                nivel_confianza: 0
+              })
+
+            if (vendedorError) {
+              console.error("[supabase-auth] ⚠️ Error creando vendedor:", vendedorError)
+            } else {
+              console.log("[supabase-auth] ✅ Registro de vendedor creado con id_vendedor:", usuarioData.id_usuario)
+            }
+          } else {
+            console.log("[supabase-auth] ℹ️ Vendedor ya existía")
+          }
+        }
+      }
+    } catch (dbError: any) {
+      console.error("[supabase-auth] ⚠️ Error en operaciones de BD:", dbError)
+      // No fallar el registro completo
     }
+    
     const user: User = {
       id: authData.user.id,
       email: data.email,
@@ -331,40 +374,11 @@ export async function loginUser(
       return { success: false, error: "Error al iniciar sesión" }
     }
     
-    // Verificar si el usuario existe en la tabla 'usuario'
-    // Si no existe, crearlo automáticamente
-    const { data: usuarioCheck } = await supabase
-      .from('usuario')
-      .select('auth_id')
-      .eq('auth_id', authData.user.id)
-      .maybeSingle()
+    console.log("[supabase-auth] Login exitoso:", authData.user.id)
     
-    if (!usuarioCheck) {
-      // El usuario no existe en la tabla, crearlo
-      console.log("[supabase-auth] Usuario no encontrado en tabla, creando registro...")
-      const nombre = authData.user.user_metadata?.nombre || authData.user.email?.split('@')[0] || 'Usuario'
-      const apellido = authData.user.user_metadata?.apellido || ''
-      const rol = authData.user.user_metadata?.rol || 'normal'
-      
-      try {
-        await supabase
-          .from('usuario')
-          .insert({
-            auth_id: authData.user.id,
-            correo: authData.user.email!,
-            nombre,
-            apellido,
-            rol: mapRoleToSpanish(rol),  // Convertir a español
-            estado: "activo",
-            password_hash: null  // El hash está en auth.users
-          })
-        console.log("[supabase-auth] Usuario creado exitosamente en tabla")
-      } catch (err: any) {
-        console.warn("[supabase-auth] No se pudo crear usuario en tabla:", err.message)
-      }
-    }
-    
-    // Construir objeto de usuario básico desde auth.user
+    // Construir objeto de usuario desde auth.user metadata
+    // No verificamos la tabla 'usuario' para hacer el login más rápido
+    // El hook useAuth() se encargará de obtener datos de la tabla si es necesario
     const nombre = authData.user.user_metadata?.nombre || authData.user.email?.split('@')[0] || 'Usuario'
     const apellido = authData.user.user_metadata?.apellido || ''
     const rol = authData.user.user_metadata?.rol || 'normal'
@@ -372,7 +386,7 @@ export async function loginUser(
     const user: User = {
       id: authData.user.id,
       email: authData.user.email!,
-      fullName: nombre + (apellido ? ` ${apellido}` : ""),
+      fullName: nombre + (apellido && apellido !== '-' ? ` ${apellido}` : ""),
       role: rol,
       createdAt: authData.user.created_at
     }
@@ -462,7 +476,7 @@ export async function updateUserProfile(
     // Separar nombre y apellido
     let nombre = updates.fullName || authState.user.fullName || ""
     let [nombreSolo, ...apellidosArr] = nombre.split(" ")
-    let apellido = apellidosArr.join(" ")
+    let apellido = apellidosArr.join(" ") || "-"  // Usar "-" si no hay apellido
     
     // Actualizar en Supabase
     const { error } = await supabase

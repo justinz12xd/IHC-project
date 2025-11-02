@@ -1,69 +1,128 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
+import { createBrowserClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Package, Calendar, TrendingUp, Store, Users, DollarSign } from "lucide-react"
 import Link from "next/link"
 
-// Datos de ejemplo para mostrar la interfaz
-const mockVendor = {
-  business_name: "Granja Santa María",
-  description: "Productos orgánicos de calidad",
-  logo_url: null
-}
-
-const mockProducts = [
-  {
-    id: "1",
-    name: "Tomates Orgánicos",
-    description: "Tomates frescos cultivados sin pesticidas",
-    base_price: 5.99,
-    image_url: null,
-    is_active: true
-  },
-  {
-    id: "2", 
-    name: "Lechuga Hidropónica",
-    description: "Lechuga fresca cultivada en invernadero",
-    base_price: 3.50,
-    image_url: null,
-    is_active: true
-  }
-]
-
-const mockEvents = [
-  {
-    id: "1",
-    events: {
-      title: "Feria Agrícola de Primavera",
-      location: "Plaza Central",
-      start_date: "2025-11-15T09:00:00Z",
-      status: "approved"
-    },
-    status: "approved"
-  },
-  {
-    id: "2",
-    events: {
-      title: "Mercado Orgánico",
-      location: "Parque Municipal", 
-      start_date: "2025-11-22T08:00:00Z",
-      status: "pending_approval"
-    },
-    status: "pending"
-  }
-]
-
 export default function VendorDashboardPage() {
-  // Datos calculados de ejemplo
-  const activeProducts = mockProducts.filter(p => p.is_active).length
-  const totalProducts = mockProducts.length
-  const approvedEvents = mockEvents.filter(e => e.status === "approved").length
-  const pendingEvents = mockEvents.filter(e => e.status === "pending").length
-  const upcomingEvents = mockEvents.filter(e => e.events && new Date(e.events.start_date) >= new Date())
-  const pastEvents = mockEvents.filter(e => e.events && new Date(e.events.start_date) < new Date())
+  const { user, isAuthenticated, loading } = useAuth()
+  const router = useRouter()
+  const supabase = createBrowserClient()
+  
+  const [vendorData, setVendorData] = useState<any>(null)
+  const [userData, setUserData] = useState<any>(null)
+  const [products, setProducts] = useState<any[]>([])
+  const [loadingData, setLoadingData] = useState(true)
 
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push("/login")
+    }
+  }, [isAuthenticated, loading, router])
+
+  useEffect(() => {
+    const loadVendorData = async () => {
+      if (!user?.id) return
+
+      try {
+        console.log("🔑 Auth ID:", user.id)
+        
+        // Cargar datos del usuario desde la tabla usuario
+        const { data: usuarioData, error: usuarioError } = await supabase
+          .from('usuario')
+          .select('*')
+          .eq('auth_id', user.id)
+          .maybeSingle()
+
+        console.log("📋 Query usuario - Data:", usuarioData, "Error:", usuarioError)
+
+        if (usuarioError) {
+          console.error("❌ Error cargando usuario:", usuarioError)
+          return
+        }
+
+        if (!usuarioData) {
+          console.warn("⚠️ No se encontró usuario en la tabla")
+          return
+        }
+
+        console.log("👤 Usuario data:", usuarioData)
+        setUserData(usuarioData)
+        
+        // Cargar productos del vendedor
+        console.log("🔍 Buscando productos con id_vendedor:", usuarioData.id_usuario)
+        const { data: productosData, error: productosError } = await supabase
+          .from('producto')
+          .select('*')
+          .eq('id_vendedor', usuarioData.id_usuario)
+
+        console.log("📦 Productos encontrados:", productosData)
+        console.log("❌ Error productos:", productosError)
+
+        if (!productosError && productosData) {
+          setProducts(productosData)
+        } else if (productosError) {
+          console.error("Error cargando productos:", productosError)
+        }
+        
+        // Cargar datos del vendedor si existe
+        const { data: vendedor, error: vendedorError } = await supabase
+          .from('vendedor')
+          .select('*')
+          .eq('id_vendedor', usuarioData.id_usuario)
+          .maybeSingle()
+
+        if (!vendedorError && vendedor) {
+          setVendorData(vendedor)
+        }
+      } catch (err) {
+        console.error("Error loading vendor data:", err)
+      } finally {
+        setLoadingData(false)
+      }
+    }
+
+    if (user) {
+      loadVendorData()
+    }
+  }, [user, supabase])
+
+  if (loading || loadingData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground">Cargando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) return null
+
+  // Datos calculados desde la BD
+  const mockEvents: any[] = [] // TODO: cargar eventos reales
+  
+  const totalProducts = products.length
+  const activeProducts = products.length // Todos activos por ahora
+  const approvedEvents = mockEvents.filter((e: any) => e.status === "approved").length
+  const pendingEvents = mockEvents.filter((e: any) => e.status === "pending").length
+  const upcomingEvents = mockEvents.filter((e: any) => e.events && new Date(e.events.start_date) >= new Date())
+  const pastEvents = mockEvents.filter((e: any) => e.events && new Date(e.events.start_date) < new Date())
+
+  // Nombre del vendedor desde la tabla usuario
+  const vendorName = userData 
+    ? `${userData.nombre}${userData.apellido && userData.apellido !== '-' ? ` ${userData.apellido}` : ''}`
+    : user.fullName || user.email
+
+  const vendorBio = vendorData?.bio || "Vendedor de productos agro productivos"
+  
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -74,8 +133,8 @@ export default function VendorDashboardPage() {
               <Store className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">{mockVendor.business_name}</h1>
-              <p className="text-muted-foreground">{mockVendor.description}</p>
+              <h1 className="text-3xl font-bold">{vendorName}</h1>
+              <p className="text-muted-foreground">{vendorBio}</p>
             </div>
           </div>
           
@@ -168,23 +227,35 @@ export default function VendorDashboardPage() {
               </Button>
             </div>
 
-            {mockProducts.length > 0 ? (
+            {products.length > 0 ? (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {mockProducts.map((product) => (
-                  <Card key={product.id}>
+                {products.map((product: any) => (
+                  <Card key={product.id_producto}>
                     <CardHeader>
                       <div className="aspect-square bg-muted rounded-lg flex items-center justify-center mb-4">
                         <Package className="h-12 w-12 text-muted-foreground" />
                       </div>
-                      <CardTitle className="text-lg">{product.name}</CardTitle>
+                      <CardTitle className="text-lg">{product.nombre}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground mb-4">
-                        {product.description}
+                        {product.descripcion}
                       </p>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Stock:</span>
+                          <span className="font-medium">{product.stock_inicial} unidades</span>
+                        </div>
+                        {product.categoria && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Categoría:</span>
+                            <span className="font-medium capitalize">{product.categoria}</span>
+                          </div>
+                        )}
+                      </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xl font-bold">
-                          ${product.base_price}
+                          S/ {product.precio_unitario.toFixed(2)}
                         </span>
                         <div className="flex gap-2">
                           <Button size="sm" variant="outline">

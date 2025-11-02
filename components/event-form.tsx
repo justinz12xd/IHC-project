@@ -36,21 +36,20 @@ export function EventForm({ organizerId, event }: EventFormProps) {
     const endDate = formData.get("end_date") as string
 
     const data = {
-      organizer_id: organizerId,
-      title: formData.get("title") as string,
-      description: formData.get("description") as string,
-      location: formData.get("location") as string,
-      address: formData.get("address") as string,
-      start_date: startDate,
-      end_date: endDate || startDate, // Si no hay end_date, usar start_date
-      capacity: formData.get("capacity") ? Number.parseInt(formData.get("capacity") as string) : null,
-      status: type === "draft" ? "draft" : "pending_approval",
+      id_organizador: organizerId,
+      nombre: formData.get("title") as string,
+      descripcion: formData.get("description") as string,
+      lugar: formData.get("location") as string,
+      fecha_inicio: startDate.split('T')[0], // Solo fecha
+      fecha_fin: endDate ? endDate.split('T')[0] : startDate.split('T')[0], // Solo fecha
+      capacidad: formData.get("capacity") ? Number.parseInt(formData.get("capacity") as string) : null,
+      estado: type === "draft" ? "PENDIENTE" : "PENDIENTE", // Siempre pendiente al crear
     }
 
     try {
       if (event) {
         // Update existing event
-        const { error } = await supabase.from("events").update(data).eq("id", event.id)
+        const { error } = await supabase.from("evento").update(data).eq("id_evento", event.id_evento)
 
         if (error) throw error
 
@@ -61,7 +60,7 @@ export function EventForm({ organizerId, event }: EventFormProps) {
         })
       } else {
         // Create new event
-        const { data: newEvent, error } = await supabase.from("events").insert(data).select().single()
+        const { data: newEvent, error } = await supabase.from("evento").insert(data).select().single()
 
         if (error) throw error
 
@@ -74,7 +73,7 @@ export function EventForm({ organizerId, event }: EventFormProps) {
         })
 
         if (newEvent && type === "submit") {
-          router.push(`/organizer/events/${newEvent.id}`)
+          router.push(`/organizer/events/${newEvent.id_evento}`)
         }
       }
 
@@ -83,7 +82,7 @@ export function EventForm({ organizerId, event }: EventFormProps) {
       }
       router.refresh()
     } catch (error) {
-      console.error("[v0] Error saving event:", error)
+      console.error("[event-form] Error saving event:", error)
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "No se pudo guardar el evento",

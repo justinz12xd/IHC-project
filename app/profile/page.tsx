@@ -58,17 +58,94 @@ export default function ProfilePage() {
         
         if (error) {
           console.error("Error loading user data:", error.message, error.code, error.details)
-          // Si hay error 406, verificar RLS policies
+          
+          // Si no se encuentra el usuario (PGRST116), crearlo ahora
           if (error.code === 'PGRST116') {
-            console.error("No se encontró el usuario en la tabla 'usuario'")
+            console.warn("[profile] Usuario no encontrado en tabla, creando registro...")
+            
+            // Obtener datos del usuario autenticado
+            const { data: authUser, error: authError } = await supabase.auth.getUser()
+            
+            if (authUser?.user) {
+              const metadata = authUser.user.user_metadata
+              const nombre = metadata?.nombre || user.fullName?.split(' ')[0] || user.email?.split('@')[0] || 'Usuario'
+              const apellido = metadata?.apellido || user.fullName?.split(' ').slice(1).join(' ') || '-'
+              
+              // Mapear rol de inglés a español
+              const rolMap: Record<string, string> = {
+                'normal': 'ASISTENTE',
+                'vendor': 'VENDEDOR',
+                'organizer': 'ORGANIZADOR',
+                'admin': 'ADMIN'
+              }
+              const rol = rolMap[user.role] || 'ASISTENTE'
+              
+              // Intentar crear el usuario
+              const { data: newUser, error: insertError } = await supabase
+                .from('usuario')
+                .insert({
+                  auth_id: user.id,
+                  correo: user.email,
+                  nombre: nombre,
+                  apellido: apellido,
+                  rol: rol,
+                  estado: 'activo',
+                  password_hash: null
+                })
+                .select()
+                .single()
+              
+              if (insertError) {
+                console.error("[profile] Error al crear usuario:", insertError)
+                // Usar datos del usuario autenticado como fallback
+                setUserData({
+                  auth_id: user.id,
+                  correo: user.email,
+                  nombre: nombre,
+                  apellido: apellido,
+                  rol: rol,
+                  estado: 'activo',
+                  fecha_registro: new Date().toISOString()
+                })
+                setFullName(nombre + (apellido !== '-' ? ` ${apellido}` : ''))
+              } else if (newUser) {
+                console.log("[profile] Usuario creado exitosamente:", newUser)
+                setUserData(newUser)
+                setFullName((newUser.nombre || '') + (newUser.apellido && newUser.apellido !== '-' ? ` ${newUser.apellido}` : ''))
+              }
+            }
+          } else {
+            // Otro tipo de error, usar datos del contexto como fallback
+            console.warn("[profile] Usando datos del contexto de autenticación")
+            setUserData({
+              auth_id: user.id,
+              correo: user.email,
+              nombre: user.fullName?.split(' ')[0] || 'Usuario',
+              apellido: user.fullName?.split(' ').slice(1).join(' ') || '-',
+              rol: user.role,
+              estado: 'activo',
+              fecha_registro: user.createdAt
+            })
+            setFullName(user.fullName || '')
           }
         } else if (data) {
           console.log("[profile] User data loaded:", data)
           setUserData(data)
-          setFullName((data.nombre || '') + (data.apellido ? ` ${data.apellido}` : ''))
+          setFullName((data.nombre || '') + (data.apellido && data.apellido !== '-' ? ` ${data.apellido}` : ''))
         }
       } catch (err: any) {
         console.error("Error loading user data:", err.message || err)
+        // Usar datos del contexto como último recurso
+        setUserData({
+          auth_id: user.id,
+          correo: user.email,
+          nombre: user.fullName?.split(' ')[0] || 'Usuario',
+          apellido: user.fullName?.split(' ').slice(1).join(' ') || '-',
+          rol: user.role,
+          estado: 'activo',
+          fecha_registro: user.createdAt
+        })
+        setFullName(user.fullName || '')
       } finally {
         setLoadingData(false)
       }

@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { createBrowserClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,14 +13,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function SetupVendorPage() {
-  const [businessName, setBusinessName] = useState("")
-  const [description, setDescription] = useState("")
-  const [history, setHistory] = useState("")
-  const [objectives, setObjectives] = useState("")
+  const [bio, setBio] = useState("")
+  const [historia, setHistoria] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const supabase = getSupabaseBrowserClient()
+  const supabase = createBrowserClient()
 
   useEffect(() => {
     checkAuth()
@@ -46,18 +44,32 @@ export default function SetupVendorPage() {
       } = await supabase.auth.getUser()
       if (!user) throw new Error("No autenticado")
 
-      const { error: vendorError } = await supabase.from("vendors").insert({
-        user_id: user.id,
-        business_name: businessName,
-        description,
-        history,
-        objectives,
+      // Primero obtener el id_usuario de la tabla usuario
+      const { data: usuario, error: usuarioError } = await supabase
+        .from("usuario")
+        .select("id_usuario")
+        .eq("auth_id", user.id)
+        .single()
+
+      if (usuarioError || !usuario) {
+        throw new Error("Usuario no encontrado en la base de datos")
+      }
+
+      // Crear perfil de vendedor
+      const { error: vendorError } = await supabase.from("vendedor").insert({
+        id_vendedor: usuario.id_usuario,
+        bio: bio,
+        historia: historia,
+        foto_perfil: null,
+        nivel_confianza: 0.0,
       })
 
       if (vendorError) throw vendorError
 
-      router.push("/dashboard/vendor")
+      router.push("/vendor/dashboard")
+      router.refresh()
     } catch (err: any) {
+      console.error("Error al crear perfil:", err)
       setError(err.message || "Error al crear perfil de vendedor")
     } finally {
       setLoading(false)
@@ -80,46 +92,33 @@ export default function SetupVendorPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="businessName">Nombre del Negocio</Label>
-              <Input
-                id="businessName"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
+              <Label htmlFor="bio">Descripción</Label>
+              <Textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={3}
+                placeholder="VENDO COSAS"
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                Describe brevemente tu negocio y lo que ofreces
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Descripción</Label>
+              <Label htmlFor="historia">Historia</Label>
               <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                placeholder="Describe tu negocio y lo que ofreces"
+                id="historia"
+                value={historia}
+                onChange={(e) => setHistoria(e.target.value)}
+                rows={4}
+                placeholder="HASODAKSDJAOSJDAS"
+                required
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="history">Historia</Label>
-              <Textarea
-                id="history"
-                value={history}
-                onChange={(e) => setHistory(e.target.value)}
-                rows={3}
-                placeholder="Cuenta la historia detrás de tu negocio"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="objectives">Objetivos</Label>
-              <Textarea
-                id="objectives"
-                value={objectives}
-                onChange={(e) => setObjectives(e.target.value)}
-                rows={3}
-                placeholder="¿Cuáles son tus objetivos al participar en eventos?"
-              />
+              <p className="text-xs text-muted-foreground">
+                Cuenta la historia de tu negocio, cómo empezó y qué te motiva
+              </p>
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>

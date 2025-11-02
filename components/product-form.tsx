@@ -30,13 +30,15 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
     setIsLoading(true)
 
     const formData = new FormData(e.currentTarget)
+    const categoria = formData.get("categoria") as string
+    
     const data = {
       id_vendedor: vendorId,
       nombre: formData.get("nombre") as string,
       descripcion: formData.get("descripcion") as string,
       precio_unitario: parseFloat(formData.get("precio_unitario") as string) || 0,
       stock_inicial: parseInt(formData.get("stock_inicial") as string) || 0,
-      categoria: formData.get("categoria") as string || null,
+      categoria: categoria === "sin_categoria" ? null : categoria,
     }
 
     try {
@@ -155,12 +157,12 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="categoria">Categoría</Label>
-            <Select name="categoria" defaultValue={product?.categoria || ""}>
+            <Select name="categoria" defaultValue={product?.categoria || "sin_categoria"}>
               <SelectTrigger id="categoria">
                 <SelectValue placeholder="Selecciona una categoría" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Sin categoría</SelectItem>
+                <SelectItem value="sin_categoria">Sin categoría</SelectItem>
                 <SelectItem value="frutas">Frutas</SelectItem>
                 <SelectItem value="verduras">Verduras</SelectItem>
                 <SelectItem value="lacteos">Lácteos</SelectItem>

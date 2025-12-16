@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { FormProgress } from "@/components/form-progress"
 import { ArrowLeft, Mail, CheckCircle } from "lucide-react"
 import { resetPassword } from "@/lib/auth/supabase-auth"
 import { useLanguage } from "@/lib/i18n/language-context"
@@ -110,6 +111,12 @@ export default function ForgotPasswordPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+
+            <FormProgress
+              fields={[
+                { name: 'email', value: email, required: true, label: 'Correo electrónico' },
+              ]}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="email">{t("auth.email")}</Label>

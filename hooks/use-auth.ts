@@ -1,43 +1,48 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getAuthState, logoutUser, type User, type AuthState } from "@/lib/auth/local-auth"
+import { getAuthStateAsync, type User, type AuthState } from "@/lib/auth/supabase-auth"
+import { createBrowserClient } from "@/lib/supabase/client"
 
 export function useAuth() {
   const [authState, setAuthState] = useState<AuthState>({ user: null, isAuthenticated: false })
   const [loading, setLoading] = useState(true)
+  const supabase = createBrowserClient()
 
   useEffect(() => {
     // Cargar estado inicial
-    const currentAuthState = getAuthState()
-    setAuthState(currentAuthState)
-    setLoading(false)
+    const loadAuth = async () => {
+      const state = await getAuthStateAsync()
+      setAuthState(state)
+      setLoading(false)
+    }
+    
+    loadAuth()
 
-    // Escuchar cambios en el estado de autenticación
+    // Escuchar cambios de autenticación
     const handleAuthChange = () => {
-      const newAuthState = getAuthState()
-      setAuthState(newAuthState)
+      loadAuth()
     }
 
     window.addEventListener("auth-change", handleAuthChange)
-    window.addEventListener("storage", handleAuthChange)
+
+    // Listener de Supabase para cambios de sesión
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        await loadAuth()
+      }
+    })
 
     return () => {
       window.removeEventListener("auth-change", handleAuthChange)
-      window.removeEventListener("storage", handleAuthChange)
+      subscription.unsubscribe()
     }
   }, [])
-
-  const logout = () => {
-    logoutUser()
-    setAuthState({ user: null, isAuthenticated: false })
-  }
 
   return {
     user: authState.user,
     isAuthenticated: authState.isAuthenticated,
-    loading,
-    logout
+    loading
   }
 }
 

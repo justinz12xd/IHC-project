@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CheckCircle, XCircle, Clock, BarChart3, Users, Calendar, TrendingUp, Shield } from "lucide-react"
+import { SecurityNotifications } from "@/components/security-notifications"
 
 // Datos de ejemplo para mostrar la interfaz
 const mockPendingEvents = [
@@ -118,6 +119,11 @@ export default function AdminDashboardPage() {
               </p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Security Notifications */}
+        <div className="mb-8">
+          <SecurityNotifications />
         </div>
 
         {/* Main Content */}

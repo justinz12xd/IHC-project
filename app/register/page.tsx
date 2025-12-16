@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { PasswordStrength } from "@/components/password-strength"
+import { FormProgress } from "@/components/form-progress"
 import Link from "next/link"
 import { useLanguage } from "@/lib/i18n/language-context"
 
@@ -74,6 +76,15 @@ export default function RegisterPage() {
               </Alert>
             )}
 
+            <FormProgress
+              fields={[
+                { name: 'fullName', value: fullName, required: true, label: 'Nombre completo' },
+                { name: 'email', value: email, required: true, label: 'Correo electrónico' },
+                { name: 'password', value: password, required: true, label: 'Contraseña' },
+                { name: 'role', value: role, required: true, label: 'Rol' },
+              ]}
+            />
+
             <div className="space-y-2">
               <Label htmlFor="fullName">{t("auth.fullName")}</Label>
               <Input
@@ -84,7 +95,15 @@ export default function RegisterPage() {
                 onChange={(e) => setFullName(e.target.value)}
                 required
                 aria-required="true"
+                autoComplete="name"
+                list="common-names"
               />
+              <datalist id="common-names">
+                <option value="Juan Pérez" />
+                <option value="María García" />
+                <option value="Carlos López" />
+                <option value="Ana Martínez" />
+              </datalist>
             </div>
 
             <div className="space-y-2">
@@ -97,6 +116,7 @@ export default function RegisterPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 aria-required="true"
+                autoComplete="email"
               />
             </div>
 
@@ -110,11 +130,12 @@ export default function RegisterPage() {
                 required
                 minLength={6}
                 aria-required="true"
-                aria-describedby="password-hint"
+                aria-describedby="password-strength"
+                autoComplete="new-password"
               />
-              <p id="password-hint" className="text-xs text-muted-foreground">
-                Mínimo 6 caracteres
-              </p>
+              <div id="password-strength">
+                <PasswordStrength password={password} />
+              </div>
             </div>
 
             <div className="space-y-2">

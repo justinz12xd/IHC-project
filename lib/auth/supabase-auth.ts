@@ -64,13 +64,17 @@ export function getAuthState(): AuthState {
 // Obtener estado de autenticación (versión asíncrona desde Supabase)
 export async function getAuthStateAsync(): Promise<AuthState> {
   try {
+    console.log("[supabase-auth] 🔍 Verificando sesión...")
     const { data: { session }, error } = await supabase.auth.getSession()
     
     if (error || !session) {
+      console.log("[supabase-auth] ℹ️ No hay sesión activa")
       authStateCache = { user: null, isAuthenticated: false }
       cacheTimestamp = Date.now()
       return authStateCache
     }
+    
+    console.log("[supabase-auth] ✅ Sesión activa:", session.user.id)
     
     // Intentar obtener datos del usuario desde la tabla 'usuario'
     let usuarioData = null
@@ -127,6 +131,12 @@ export async function getAuthStateAsync(): Promise<AuthState> {
     
     authStateCache = { user, isAuthenticated: true }
     cacheTimestamp = Date.now()
+    console.log("[supabase-auth] ✅ Estado de autenticación actualizado:", { 
+      userId: user.id, 
+      email: user.email, 
+      role: user.role,
+      isAuthenticated: true 
+    })
     return authStateCache
   } catch (error) {
     console.error("Error reading auth state:", error)
@@ -348,10 +358,46 @@ export async function registerUser(data: {
 export async function loginUser(
   email: string, 
   password: string
-): Promise<{ success: boolean; user?: User; error?: string }> {
+): Promise<{ success: boolean; user?: User; error?: string; isBlocked?: boolean; remainingTime?: number }> {
   try {
     if (!email || !password) {
       return { success: false, error: "Email y contraseña son obligatorios" }
+    }
+    
+    // Verificar si el usuario está bloqueado
+    const { data: usuarioCheck, error: checkError } = await supabase
+      .from('usuario')
+      .select('id_usuario, bloqueado_hasta, intentos_fallidos')
+      .eq('correo', email)
+      .maybeSingle()
+
+    if (!checkError && usuarioCheck) {
+      // Si hay un bloqueo activo
+      if (usuarioCheck.bloqueado_hasta) {
+        const bloqueadoHasta = new Date(usuarioCheck.bloqueado_hasta)
+        const ahora = new Date()
+        
+        if (ahora < bloqueadoHasta) {
+          const tiempoRestante = Math.ceil((bloqueadoHasta.getTime() - ahora.getTime()) / 1000)
+          console.log(`[supabase-auth] ⛔ Usuario bloqueado por ${tiempoRestante}s más`)
+          return {
+            success: false,
+            isBlocked: true,
+            remainingTime: tiempoRestante,
+            error: `Cuenta bloqueada. Intenta nuevamente en ${tiempoRestante} segundos.`
+          }
+        } else {
+          // El bloqueo expiró, resetearlo
+          await supabase
+            .from('usuario')
+            .update({
+              bloqueado_hasta: null,
+              intentos_fallidos: 0
+            })
+            .eq('id_usuario', usuarioCheck.id_usuario)
+          console.log("[supabase-auth] ✅ Bloqueo expirado, reseteado")
+        }
+      }
     }
     
     // Iniciar sesión con Supabase Auth
@@ -362,6 +408,53 @@ export async function loginUser(
     
     if (signInError) {
       console.error("[supabase-auth] Sign in error:", signInError)
+      
+      // Incrementar intentos fallidos si es error de credenciales
+      if (signInError.message === "Invalid login credentials" && usuarioCheck) {
+        const nuevosIntentos = (usuarioCheck.intentos_fallidos || 0) + 1
+        const ahora = new Date()
+        
+        console.log(`[supabase-auth] ⚠️ Intento fallido ${nuevosIntentos}/3`)
+        
+        // Si alcanza 3 intentos, bloquear por 10 segundos
+        if (nuevosIntentos >= 3) {
+          const bloqueadoHasta = new Date(ahora.getTime() + 10 * 1000) // 10 segundos
+          
+          await supabase
+            .from('usuario')
+            .update({
+              intentos_fallidos: nuevosIntentos,
+              bloqueado_hasta: bloqueadoHasta.toISOString(),
+              ultimo_intento_fallido: ahora.toISOString()
+            })
+            .eq('id_usuario', usuarioCheck.id_usuario)
+          
+          console.log("[supabase-auth] 🔒 Usuario bloqueado por 10 segundos")
+          
+          return {
+            success: false,
+            isBlocked: true,
+            remainingTime: 10,
+            error: "Demasiados intentos fallidos. Cuenta bloqueada por 10 segundos."
+          }
+        } else {
+          // Solo incrementar contador
+          await supabase
+            .from('usuario')
+            .update({
+              intentos_fallidos: nuevosIntentos,
+              ultimo_intento_fallido: ahora.toISOString()
+            })
+            .eq('id_usuario', usuarioCheck.id_usuario)
+          
+          const intentosRestantes = 3 - nuevosIntentos
+          return {
+            success: false,
+            error: `Credenciales incorrectas. Te quedan ${intentosRestantes} ${intentosRestantes === 1 ? 'intento' : 'intentos'}.`
+          }
+        }
+      }
+      
       return { 
         success: false, 
         error: signInError.message === "Invalid login credentials" 
@@ -375,6 +468,19 @@ export async function loginUser(
     }
     
     console.log("[supabase-auth] Login exitoso:", authData.user.id)
+    
+    // Resetear intentos fallidos al login exitoso
+    if (usuarioCheck) {
+      await supabase
+        .from('usuario')
+        .update({
+          intentos_fallidos: 0,
+          bloqueado_hasta: null,
+          ultimo_intento_fallido: null
+        })
+        .eq('id_usuario', usuarioCheck.id_usuario)
+      console.log("[supabase-auth] ✅ Intentos fallidos reseteados")
+    }
     
     // Construir objeto de usuario desde auth.user metadata
     // No verificamos la tabla 'usuario' para hacer el login más rápido
@@ -402,14 +508,35 @@ export async function loginUser(
 // Cerrar sesión
 export async function logoutUser(): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase.auth.signOut()
+    console.log("[supabase-auth] Cerrando sesión...")
+    
+    // Cerrar sesión en Supabase
+    const { error } = await supabase.auth.signOut({ scope: 'local' })
     
     if (error) {
       console.error("[supabase-auth] Sign out error:", error)
-      return { success: false, error: error.message }
+      // Continuar con la limpieza incluso si hay error
+    }
+    
+    // Limpiar localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('supabase.auth.token')
+        localStorage.removeItem('rememberedEmail')
+        // Limpiar todas las claves de Supabase
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sb-')) {
+            localStorage.removeItem(key)
+          }
+        })
+        console.log("[supabase-auth] ✅ localStorage limpiado")
+      } catch (err) {
+        console.error("[supabase-auth] Error limpiando localStorage:", err)
+      }
     }
     
     notifyAuthChange()
+    console.log("[supabase-auth] ✅ Sesión cerrada correctamente")
     return { success: true }
   } catch (error: any) {
     console.error("[supabase-auth] Logout error:", error)

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { FormProgress } from "@/components/form-progress"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { Lock, CheckCircle } from "lucide-react"
 
@@ -99,6 +100,13 @@ export default function ResetPasswordPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+
+            <FormProgress
+              fields={[
+                { name: 'password', value: password, required: true, label: 'Nueva contraseña' },
+                { name: 'confirmPassword', value: confirmPassword, required: true, label: 'Confirmar contraseña' },
+              ]}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="password">{t("auth.newPassword")}</Label>

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FormProgress } from "@/components/form-progress"
 import { ArrowLeft, Mail, Phone, MapPin, Send, CheckCircle } from "lucide-react"
 import { useLanguage } from "@/lib/i18n/language-context"
 
@@ -121,6 +122,16 @@ export default function ContactPage() {
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-6">
+                    <FormProgress
+                      fields={[
+                        { name: 'name', value: formData.name, required: true, label: 'Nombre' },
+                        { name: 'email', value: formData.email, required: true, label: 'Email' },
+                        { name: 'phone', value: formData.phone, required: false, label: 'Teléfono' },
+                        { name: 'category', value: formData.category, required: true, label: 'Categoría' },
+                        { name: 'subject', value: formData.subject, required: true, label: 'Asunto' },
+                        { name: 'message', value: formData.message, required: true, label: 'Mensaje' },
+                      ]}
+                    />
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { FormProgress } from "@/components/form-progress"
 import { Loader2 } from "lucide-react"
 
 interface ProductFormProps {
@@ -21,6 +22,11 @@ interface ProductFormProps {
 
 export function ProductForm({ vendorId, product }: ProductFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [nombre, setNombre] = useState(product?.nombre || "")
+  const [descripcion, setDescripcion] = useState(product?.descripcion || "")
+  const [precioUnitario, setPrecioUnitario] = useState(product?.precio_unitario || "")
+  const [stockInicial, setStockInicial] = useState(product?.stock_inicial || "")
+  const [categoria, setCategoria] = useState(product?.categoria || "sin_categoria")
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createBrowserClient()
@@ -91,6 +97,15 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
           <CardDescription>Completa los detalles de tu producto para agregarlo al inventario</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <FormProgress
+            fields={[
+              { name: 'nombre', value: nombre, required: true, label: 'Nombre del producto' },
+              { name: 'descripcion', value: descripcion, required: true, label: 'Descripción' },
+              { name: 'precio_unitario', value: precioUnitario, required: true, label: 'Precio unitario' },
+              { name: 'stock_inicial', value: stockInicial, required: true, label: 'Stock inicial' },
+              { name: 'categoria', value: categoria !== 'sin_categoria' ? categoria : '', required: false, label: 'Categoría' },
+            ]}
+          />
           <div className="space-y-2">
             <Label htmlFor="nombre">
               Nombre del Producto <span className="text-destructive">*</span>
@@ -99,7 +114,8 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
               id="nombre"
               name="nombre"
               placeholder="Ej: Miel de Abeja Orgánica"
-              defaultValue={product?.nombre}
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
               required
               maxLength={100}
             />
@@ -113,7 +129,8 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
               id="descripcion"
               name="descripcion"
               placeholder="Describe tu producto de manera clara y atractiva"
-              defaultValue={product?.descripcion}
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
               required
               rows={4}
               maxLength={500}
@@ -134,7 +151,8 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                defaultValue={product?.precio_unitario}
+                value={precioUnitario}
+                onChange={(e) => setPrecioUnitario(e.target.value)}
                 required
               />
             </div>
@@ -148,8 +166,9 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
                 name="stock_inicial"
                 type="number"
                 min="0"
+                value={stockInicial}
+                onChange={(e) => setStockInicial(e.target.value)}
                 placeholder="0"
-                defaultValue={product?.stock_inicial}
                 required
               />
             </div>
@@ -157,7 +176,7 @@ export function ProductForm({ vendorId, product }: ProductFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="categoria">Categoría</Label>
-            <Select name="categoria" defaultValue={product?.categoria || "sin_categoria"}>
+            <Select name="categoria" value={categoria} onValueChange={setCategoria}>
               <SelectTrigger id="categoria">
                 <SelectValue placeholder="Selecciona una categoría" />
               </SelectTrigger>

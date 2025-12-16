@@ -24,9 +24,25 @@ export function DashboardNav({ userRole }: DashboardNavProps) {
   const supabase = createBrowserClient()
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push("/login")
-    router.refresh()
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Error al cerrar sesión:', error)
+      }
+      // Limpiar localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('supabase.auth.token')
+        localStorage.removeItem('rememberedEmail')
+      }
+      // Redirigir y refrescar
+      router.push("/login")
+      router.refresh()
+    } catch (error) {
+      console.error('Error cerrando sesión:', error)
+      // Incluso si hay error, redirigir al login
+      router.push("/login")
+      router.refresh()
+    }
   }
 
   const getDashboardLink = () => {

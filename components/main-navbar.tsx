@@ -31,32 +31,43 @@ export function MainNavbar() {
   const { t, language } = useLanguage()
 
   // Definir rutas con traducciones
-  const mainRoutes = [
-    {
-      title: t("nav.home"),
-      href: "/",
-      icon: Home,
-      description: t("nav.home")
-    },
-    {
-      title: t("nav.events"),
-      href: "/dashboard",
-      icon: Calendar,
-      description: t("nav.events")
-    },
-    {
-      title: t("nav.vendors"),
-      href: "/vendor/dashboard",
-      icon: Store,
-      description: t("nav.vendors")
-    },
-    {
-      title: t("nav.organizers"),
-      href: "/organizer/dashboard",
-      icon: Users,
-      description: t("nav.organizers")
+  const getMainRoutes = () => {
+    const routes = [
+      {
+        title: t("nav.home"),
+        href: "/",
+        icon: Home,
+        description: t("nav.home")
+      },
+      {
+        title: t("nav.events"),
+        href: "/dashboard",
+        icon: Calendar,
+        description: t("nav.events")
+      }
+    ]
+
+    // Agregar ruta específica según el rol del usuario
+    if (currentUser?.role === 'vendor') {
+      routes.push({
+        title: "Mi Tienda",
+        href: "/vendor/dashboard",
+        icon: Store,
+        description: "Panel de vendedor"
+      })
+    } else if (currentUser?.role === 'organizer') {
+      routes.push({
+        title: "Mis Eventos",
+        href: "/organizer/dashboard",
+        icon: Users,
+        description: "Panel de organizador"
+      })
     }
-  ]
+
+    return routes
+  }
+
+  const mainRoutes = getMainRoutes()
 
   const authRoutes = [
     {
@@ -111,10 +122,26 @@ export function MainNavbar() {
   }, [language])
 
   const handleLogout = async () => {
-    await logoutUser()
-    setCurrentUser(null)
-    setIsOpen(false)
-    router.push("/")
+    try {
+      const result = await logoutUser()
+      if (result.success) {
+        // Limpiar estado local
+        setCurrentUser(null)
+        setIsOpen(false)
+        // Limpiar localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('supabase.auth.token')
+          localStorage.removeItem('rememberedEmail')
+        }
+        // Redirigir y refrescar
+        router.push("/")
+        router.refresh()
+      } else {
+        console.error('Error cerrando sesión:', result.error)
+      }
+    } catch (error) {
+      console.error('Error cerrando sesión:', error)
+    }
   }
 
   const getUserInitials = (user: User) => {
@@ -158,19 +185,22 @@ export function MainNavbar() {
     }
   }
 
-  const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
-    <>
-      {/* Rutas principales */}
-      {mainRoutes.map((route) => {
-        const Icon = route.icon
-        const isActive = pathname === route.href
-        
-        return (
-          <Link
-            key={route.href}
-            href={route.href}
-            onClick={() => mobile && setIsOpen(false)}
-            className={cn(
+  const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
+    const routes = getMainRoutes()
+    
+    return (
+      <>
+        {/* Rutas principales */}
+        {routes.map((route) => {
+          const Icon = route.icon
+          const isActive = pathname === route.href
+          
+          return (
+            <Link
+              key={route.href}
+              href={route.href}
+              onClick={() => mobile && setIsOpen(false)}
+              className={cn(
               "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
               mobile ? "w-full justify-start" : "",
               isActive
@@ -211,7 +241,8 @@ export function MainNavbar() {
         )
       })}
     </>
-  )
+    )
+  }
 
   const AuthButtons = ({ mobile = false }: { mobile?: boolean }) => {
     // Si está autenticado, mostrar menú de usuario

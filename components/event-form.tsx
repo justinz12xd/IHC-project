@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { FormProgress } from "@/components/form-progress"
 import { Loader2, Save, Send } from "lucide-react"
 
 interface EventFormProps {
@@ -21,63 +22,79 @@ interface EventFormProps {
 export function EventForm({ organizerId, event }: EventFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [saveType, setSaveType] = useState<"draft" | "submit">("draft")
+  const [title, setTitle] = useState(event?.title || "")
+  const [description, setDescription] = useState(event?.description || "")
+  const [location, setLocation] = useState(event?.location || "")
+  const [startDate, setStartDate] = useState(event?.start_date ? new Date(event.start_date).toISOString().slice(0, 16) : "")
+  const [endDate, setEndDate] = useState(event?.end_date ? new Date(event.end_date).toISOString().slice(0, 16) : "")
+  const [capacity, setCapacity] = useState(event?.capacity || "")
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createBrowserClient()
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>, type: "draft" | "submit") => {
-    e.preventDefault()
+  const handleSubmit = async (type: "draft" | "submit") => {
     setIsLoading(true)
     setSaveType(type)
 
-    const formData = new FormData(e.currentTarget)
-
-    const startDate = formData.get("start_date") as string
-    const endDate = formData.get("end_date") as string
-
     const data = {
       id_organizador: organizerId,
-      nombre: formData.get("title") as string,
-      descripcion: formData.get("description") as string,
-      lugar: formData.get("location") as string,
+      nombre: title,
+      descripcion: description,
+      lugar: location,
       fecha_inicio: startDate.split('T')[0], // Solo fecha
       fecha_fin: endDate ? endDate.split('T')[0] : startDate.split('T')[0], // Solo fecha
-      capacidad: formData.get("capacity") ? Number.parseInt(formData.get("capacity") as string) : null,
-      estado: type === "draft" ? "PENDIENTE" : "PENDIENTE", // Siempre pendiente al crear
+      capacidad: capacity ? Number.parseInt(capacity) : null,
+      estado: type === "draft" ? "PENDIENTE" : "APROBADO", // Borrador o directamente aprobado
     }
 
     try {
+      console.log("[event-form] 📝 Guardando evento:", data)
+      
       if (event) {
         // Update existing event
         const { error } = await supabase.from("evento").update(data).eq("id_evento", event.id_evento)
 
-        if (error) throw error
+        if (error) {
+          console.error("[event-form] ❌ Error actualizando:", error)
+          throw error
+        }
 
+        console.log("[event-form] ✅ Evento actualizado")
         toast({
           title: type === "draft" ? "Borrador guardado" : "Evento actualizado",
           description:
-            type === "draft" ? "Los cambios se guardaron como borrador" : "El evento se envió para aprobación",
+            type === "draft" ? "Los cambios se guardaron como borrador" : "El evento se actualizó correctamente",
         })
       } else {
         // Create new event
+        console.log("[event-form] 🔨 Creando evento...")
         const { data: newEvent, error } = await supabase.from("evento").insert(data).select().single()
 
-        if (error) throw error
+        if (error) {
+          console.error("[event-form] ❌ Error creando:", error)
+          throw error
+        }
 
+        console.log("[event-form] ✅ Evento creado:", newEvent)
         toast({
-          title: type === "draft" ? "Borrador creado" : "Evento creado",
+          title: type === "draft" ? "Borrador creado" : "¡Evento publicado!",
           description:
             type === "draft"
               ? "El evento se guardó como borrador"
-              : "El evento se envió para aprobación del administrador",
+              : "El evento se creó exitosamente y ya está visible para los usuarios",
         })
 
         if (newEvent && type === "submit") {
+          // Pequeño delay para mostrar el toast antes de redirigir
+          await new Promise(resolve => setTimeout(resolve, 500))
           router.push(`/organizer/events/${newEvent.id_evento}`)
+          return
         }
       }
 
       if (type === "draft" || event) {
+        // Pequeño delay para mostrar el toast
+        await new Promise(resolve => setTimeout(resolve, 500))
         router.push("/organizer/dashboard")
       }
       router.refresh()
@@ -94,13 +111,23 @@ export function EventForm({ organizerId, event }: EventFormProps) {
   }
 
   return (
-    <form onSubmit={(e) => e.preventDefault()}>
+    <div>
       <Card>
         <CardHeader>
           <CardTitle>Información del Evento</CardTitle>
           <CardDescription>Completa los detalles de tu evento agroproductivo</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <FormProgress
+            fields={[
+              { name: 'title', value: title, required: true, label: 'Nombre del evento' },
+              { name: 'description', value: description, required: true, label: 'Descripción' },
+              { name: 'startDate', value: startDate, required: true, label: 'Fecha de inicio' },
+              { name: 'endDate', value: endDate, required: true, label: 'Fecha de fin' },
+              { name: 'location', value: location, required: true, label: 'Ubicación' },
+              { name: 'capacity', value: capacity, required: false, label: 'Capacidad' },
+            ]}
+          />
           <div className="space-y-2">
             <Label htmlFor="title">
               Nombre del Evento{" "}
@@ -112,11 +139,22 @@ export function EventForm({ organizerId, event }: EventFormProps) {
               id="title"
               name="title"
               placeholder="Ej: Feria Agroproductiva de Primavera"
-              defaultValue={event?.title}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               required
               maxLength={200}
               aria-required="true"
+              autoComplete="off"
+              list="event-names"
             />
+            <datalist id="event-names">
+              <option value="Feria Agroproductiva de Primavera" />
+              <option value="Mercado Orgánico Local" />
+              <option value="Exposición de Productos Regionales" />
+              <option value="Festival de la Cosecha" />
+              <option value="Encuentro de Productores" />
+              <option value="Muestra Agroindustrial" />
+            </datalist>
           </div>
 
           <div className="space-y-2">
@@ -130,7 +168,8 @@ export function EventForm({ organizerId, event }: EventFormProps) {
               id="description"
               name="description"
               placeholder="Describe el evento, sus objetivos y qué pueden esperar los asistentes"
-              defaultValue={event?.description}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               required
               rows={5}
               maxLength={1000}
@@ -152,7 +191,8 @@ export function EventForm({ organizerId, event }: EventFormProps) {
                 id="start_date"
                 name="start_date"
                 type="datetime-local"
-                defaultValue={event?.start_date ? new Date(event.start_date).toISOString().slice(0, 16) : ""}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
                 required
                 aria-required="true"
               />
@@ -169,7 +209,8 @@ export function EventForm({ organizerId, event }: EventFormProps) {
                 id="end_date"
                 name="end_date"
                 type="datetime-local"
-                defaultValue={event?.end_date ? new Date(event.end_date).toISOString().slice(0, 16) : ""}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
                 required
                 aria-required="true"
               />
@@ -187,11 +228,23 @@ export function EventForm({ organizerId, event }: EventFormProps) {
               id="location"
               name="location"
               placeholder="Ej: Centro de Convenciones Municipal"
-              defaultValue={event?.location}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
               required
               maxLength={200}
               aria-required="true"
+              autoComplete="off"
+              list="common-locations"
             />
+            <datalist id="common-locations">
+              <option value="Centro de Convenciones Municipal" />
+              <option value="Plaza Principal" />
+              <option value="Parque Central" />
+              <option value="Centro Comunitario" />
+              <option value="Salón de Eventos" />
+              <option value="Mercado Municipal" />
+              <option value="Explanada del Municipio" />
+            </datalist>
           </div>
 
           <div className="space-y-2">
@@ -214,7 +267,8 @@ export function EventForm({ organizerId, event }: EventFormProps) {
               type="number"
               min="1"
               placeholder="Opcional: límite de asistentes"
-              defaultValue={event?.capacity || ""}
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">Dejar vacío para capacidad ilimitada</p>
           </div>
@@ -232,7 +286,7 @@ export function EventForm({ organizerId, event }: EventFormProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={(e: any) => handleSubmit(e, "draft")}
+              onClick={() => handleSubmit("draft")}
               disabled={isLoading}
               className="flex-1"
             >
@@ -250,25 +304,25 @@ export function EventForm({ organizerId, event }: EventFormProps) {
             </Button>
             <Button
               type="button"
-              onClick={(e: any) => handleSubmit(e, "submit")}
+              onClick={() => handleSubmit("submit")}
               disabled={isLoading}
               className="flex-1"
             >
               {isLoading && saveType === "submit" ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-                  <span>Enviando...</span>
+                  <span>Publicando...</span>
                 </>
               ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" aria-hidden="true" />
-                  <span>Enviar para Aprobación</span>
+                  <span>Publicar Evento</span>
                 </>
               )}
             </Button>
           </div>
         </CardContent>
       </Card>
-    </form>
+    </div>
   )
 }

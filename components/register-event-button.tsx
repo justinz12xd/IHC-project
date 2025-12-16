@@ -4,8 +4,9 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { CheckCircle2, Loader2 } from "lucide-react"
+import { CheckCircle2, Loader2, UserPlus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 interface RegisterEventButtonProps {
   eventId: string
@@ -98,27 +99,39 @@ export function RegisterEventButton({ eventId, isRegistered: initialRegistered, 
     }
   }
 
+  if (isRegistered) {
+    return (
+      <Button
+        onClick={handleRegister}
+        disabled={isLoading}
+        variant="outline"
+        size="lg"
+        className="min-w-[160px]"
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+            <span>Procesando...</span>
+          </>
+        ) : (
+          <>
+            <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
+            <span>Ya Registrado</span>
+          </>
+        )}
+      </Button>
+    )
+  }
+
   return (
-    <Button
-      onClick={handleRegister}
-      disabled={isLoading}
-      variant={isRegistered ? "outline" : "default"}
-      size="lg"
-      className="min-w-[160px]"
-    >
-      {isLoading ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-          <span>Procesando...</span>
-        </>
-      ) : isRegistered ? (
-        <>
-          <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
-          <span>Cancelar Registro</span>
-        </>
-      ) : (
+    <Link href={`/events/${eventId}/registrar`}>
+      <Button
+        size="lg"
+        className="min-w-[160px] bg-green-600 hover:bg-green-700"
+      >
+        <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" />
         <span>Registrarse</span>
-      )}
-    </Button>
+      </Button>
+    </Link>
   )
 }

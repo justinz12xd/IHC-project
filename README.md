@@ -56,12 +56,15 @@ Sistema para la gestión de eventos agroproductivos con múltiples roles de usua
 - `/login` - Iniciar sesión
 - `/register` - Registro con selección de rol
 - `/forgot-password` - Recuperación de contraseña
+- `/reset-password` - Restablecer contraseña
 - `/contact` - Contacto
 - `/terms` y `/privacy` - Términos y privacidad
+- `/events` - Lista de eventos disponibles
 
 **Usuarios:**
 - `/dashboard` - Dashboard principal
 - `/events/[id]` - Detalles de evento
+- `/events/[id]/registrar` - Formulario de registro a evento
 - `/profile` - Perfil de usuario
 
 **Vendedores:**
@@ -69,7 +72,9 @@ Sistema para la gestión de eventos agroproductivos con múltiples roles de usua
 - `/vendor/products` - Gestión de productos
 - `/vendor/events` - Eventos del vendedor
 - `/vendor/profile` - Perfil público
-- `/setup-vendor` - Configuración inicial
+- `/vendor/solicitar-participacion` - Solicitar participación en evento
+- `/vendor/asignar-producto` - Asignar productos a eventos
+- `/setup-vendor` - Formulario de registro de vendedor (con subida de imágenes)
 
 **Organizadores:**
 - `/organizer/dashboard` - Dashboard de organizador
@@ -77,6 +82,88 @@ Sistema para la gestión de eventos agroproductivos con múltiples roles de usua
 
 **Administradores:**
 - `/admin/dashboard` - Panel de administración
+- `/admin/gestionar-eventos` - Aprobar/rechazar eventos pendientes
+
+**Sistema de Gestión (Multi-Formulario):**
+- `/shop` - Sistema con 3 pestañas:
+  - Pestaña 1: Compra/Consumo - Formulario de compra de productos
+  - Pestaña 2: Contacto/Soporte - Formulario de contacto con adjuntos
+  - Pestaña 3: Gestión de Eventos (Admin) - Modificar eventos
+
+## 📋 Formularios Implementados (12 Total)
+
+### 1. **Login** - `/login`
+Formulario de inicio de sesión con email y contraseña
+
+### 2. **Registro** - `/register`
+Formulario de registro con selección de rol (Usuario, Vendedor, Organizador)
+
+### 3. **Recuperar Contraseña** - `/forgot-password`
+Formulario para solicitar restablecimiento de contraseña
+
+### 4. **Restablecer Contraseña** - `/reset-password`
+Formulario para crear nueva contraseña
+
+### 5. **Registro de Vendedor** - `/setup-vendor`
+Formulario completo con:
+- Biografía (50-500 caracteres)
+- Historia del negocio (100-1000 caracteres)
+- Subida múltiple de imágenes con preview
+- Validación de tipos de archivo
+
+### 6. **Solicitud de Participación en Evento** - `/vendor/solicitar-participacion`
+Formulario para vendedores:
+- Selección de evento (dropdown)
+- Checkbox de aceptación de términos
+- Comentarios opcionales
+
+### 7. **Asignar Producto a Evento** - `/vendor/asignar-producto`
+Formulario con:
+- Selección de producto propio
+- Selección de evento aprobado
+- Precio específico para el evento
+- Cantidad disponible con validación de stock
+
+### 8. **Registro a Evento** - `/events/[id]/registrar`
+Formulario detallado con:
+- Información completa del evento
+- Barra de progreso de capacidad
+- Checkboxes de políticas y notificaciones
+- Validación de cupos disponibles
+
+### 9. **Crear/Editar Evento** - `/organizer/events` (usa event-form.tsx)
+Formulario de organizador:
+- Información básica del evento
+- Fechas y horarios
+- Ubicación y capacidad
+- Opciones: Guardar Borrador o Publicar
+
+### 10. **Gestionar Eventos (Admin)** - `/admin/gestionar-eventos`
+Panel administrativo:
+- Ver eventos pendientes
+- Aprobar o rechazar con un clic
+- Ver detalles completos del organizador
+
+### 11. **Compra de Productos** - `/shop` (Pestaña 1)
+Formulario de compra:
+- Dropdown de productos con precio y stock
+- Contador de cantidad (+/-)
+- Método de pago
+- Cálculo automático del total
+
+### 12. **Contacto/Soporte** - `/shop` (Pestaña 2)
+Formulario de contacto:
+- Nombre completo
+- Email con validación
+- Mensaje (máx. 1000 caracteres)
+- Adjuntos opcionales múltiples
+
+### 13. **Gestión de Eventos (Admin)** - `/shop` (Pestaña 3)
+Formulario administrativo:
+- ID del evento
+- Cambiar estado (dropdown: Pendiente, Aprobado, Rechazado, etc.)
+- Motivo opcional
+- Actualizar capacidad y lugar
 
 ## Estructura de la Base de Datos
 

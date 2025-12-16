@@ -32,10 +32,17 @@ export default function EventsPage() {
   const loadEvents = async () => {
     try {
       console.log("[events] 📥 Cargando eventos...")
+      
+      // Obtener fecha de hoy (solo fecha, sin hora)
+      const hoy = new Date()
+      hoy.setHours(0, 0, 0, 0)
+      const fechaHoy = hoy.toISOString().split('T')[0]
+      
       const { data, error } = await supabase
         .from('evento')
         .select('*')
         .eq('estado', 'APROBADO')
+        .gte('fecha_inicio', fechaHoy)
         .order('fecha_inicio', { ascending: true })
 
       if (error) {

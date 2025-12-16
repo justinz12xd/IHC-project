@@ -31,10 +31,17 @@ export default function DashboardPage() {
   const loadEvents = async () => {
     try {
       console.log("[dashboard] 📥 Cargando eventos...")
+      
+      // Obtener fecha de hoy (solo fecha, sin hora)
+      const hoy = new Date()
+      hoy.setHours(0, 0, 0, 0)
+      const fechaHoy = hoy.toISOString().split('T')[0]
+      
       const { data, error } = await supabase
         .from('evento')
         .select('*')
         .eq('estado', 'APROBADO')
+        .gte('fecha_inicio', fechaHoy)
         .order('fecha_inicio', { ascending: true })
 
       if (error) {
@@ -43,6 +50,7 @@ export default function DashboardPage() {
       }
 
       console.log("[dashboard] ✅ Eventos cargados:", data?.length || 0)
+      console.log("[dashboard] 📅 Filtrando desde:", fechaHoy)
       setEvents(data || [])
     } catch (err) {
       console.error("[dashboard] ❌ Error:", err)
@@ -63,10 +71,8 @@ export default function DashboardPage() {
     }
   }
   
-  // Filtrar eventos
-  const upcomingEvents = events.filter(e => 
-    new Date(e.fecha_inicio) >= new Date()
-  )
+  // Filtrar eventos (ya vienen filtrados de la BD)
+  const upcomingEvents = events
   
   const registeredEventIds = registrations.map(r => r.event_id)
   const upcomingRegistered = upcomingEvents.filter(e => registeredEventIds.includes(e.id_evento))
@@ -124,8 +130,10 @@ export default function DashboardPage() {
             </Button>
           )}
           {!registered && !attended && (
-            <Button size="sm" className="flex-1">
-              {t("dashboard.register")}
+            <Button size="sm" className="flex-1" asChild>
+              <Link href={`/events/${event.id_evento}/registrar`}>
+                {t("dashboard.register")}
+              </Link>
             </Button>
           )}
           <Button size="sm" variant="outline" asChild>

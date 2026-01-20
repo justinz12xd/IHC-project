@@ -4,10 +4,12 @@ import { useEffect, useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, MapPin, Users, Clock } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Calendar, MapPin, Users, Clock, Search, Filter } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { Label } from "@/components/ui/label"
 
 interface Event {
   id_evento: number
@@ -22,12 +24,58 @@ interface Event {
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([])
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [locationFilter, setLocationFilter] = useState("")
+  const [dateFilter, setDateFilter] = useState("")
+  const [showFilters, setShowFilters] = useState(false)
   const supabase = createBrowserClient()
 
   useEffect(() => {
     loadEvents()
   }, [])
+
+  useEffect(() => {
+    filterEvents()
+  }, [events, searchTerm, locationFilter, dateFilter])
+
+  const filterEvents = () => {
+    let filtered = [...events]
+
+    // Filter by search term (nombre o descripción)
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      filtered = filtered.filter(
+        (event) =>
+          event.nombre.toLowerCase().includes(term) ||
+          event.descripcion.toLowerCase().includes(term)
+      )
+    }
+
+    // Filter by location
+    if (locationFilter) {
+      const location = locationFilter.toLowerCase()
+      filtered = filtered.filter((event) =>
+        event.lugar.toLowerCase().includes(location)
+      )
+    }
+
+    // Filter by date
+    if (dateFilter) {
+      filtered = filtered.filter((event) =>
+        event.fecha_inicio.startsWith(dateFilter)
+      )
+    }
+
+    setFilteredEvents(filtered)
+  }
+
+  const clearFilters = () => {
+    setSearchTerm("")
+    setLocationFilter("")
+    setDateFilter("")
+  }
 
   const loadEvents = async () => {
     try {
@@ -78,18 +126,92 @@ export default function EventsPage() {
         </p>
       </div>
 
-      {events.length === 0 ? (
+      {/* Search and Filter Section */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar eventos por nombre o descripción..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+                aria-label="Buscar eventos"
+              />
+            </div>
+
+            {/* Filter Toggle */}
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="w-full sm:w-auto"
+            >
+              <Filter className="mr-2 h-4 w-4" />
+              {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
+            </Button>
+
+            {/* Advanced Filters */}
+            {showFilters && (
+              <div className="grid gap-4 sm:grid-cols-2 pt-4 border-t">
+                <div className="space-y-2">
+                  <Label htmlFor="location-filter">Ubicación</Label>
+                  <Input
+                    id="location-filter"
+                    placeholder="Filtrar por ubicación..."
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                    aria-label="Filtrar por ubicación"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="date-filter">Fecha</Label>
+                  <Input
+                    id="date-filter"
+                    type="date"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    aria-label="Filtrar por fecha"
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={clearFilters}
+                  className="sm:col-span-2"
+                >
+                  Limpiar filtros
+                </Button>
+              </div>
+            )}
+
+            {/* Results Count */}
+            <p className="text-sm text-muted-foreground">
+              {filteredEvents.length} {filteredEvents.length === 1 ? "evento encontrado" : "eventos encontrados"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {filteredEvents.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg text-muted-foreground">
-              No hay eventos disponibles en este momento
+              {events.length === 0
+                ? "No hay eventos disponibles en este momento"
+                : "No se encontraron eventos que coincidan con tu búsqueda"}
             </p>
+            {events.length > 0 && (
+              <Button variant="link" onClick={clearFilters} className="mt-2">
+                Limpiar filtros
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {events.map((event) => (
+          {filteredEvents.map((event) => (
             <Card key={event.id_evento} className="overflow-hidden hover:shadow-lg transition-shadow">
               <CardHeader className="pb-4">
                 <CardTitle className="line-clamp-2">{event.nombre}</CardTitle>

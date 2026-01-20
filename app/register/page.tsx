@@ -13,6 +13,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PasswordStrength } from "@/components/password-strength"
 import { FormProgress } from "@/components/form-progress"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { HelpCircle } from "lucide-react"
 import Link from "next/link"
 import { useLanguage } from "@/lib/i18n/language-context"
 
@@ -97,6 +99,7 @@ export default function RegisterPage() {
                 aria-required="true"
                 autoComplete="name"
                 list="common-names"
+                aria-describedby="fullname-help"
               />
               <datalist id="common-names">
                 <option value="Juan Pérez" />
@@ -107,7 +110,19 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">{t("auth.email")}</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="email">{t("auth.email")}</Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      Usa un correo válido. Recibirás un email de confirmación para activar tu cuenta.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <Input
                 id="email"
                 type="email"
@@ -121,7 +136,19 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">{t("auth.password")}</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="password">{t("auth.password")}</Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      La contraseña debe tener al menos 8 caracteres, incluyendo mayúsculas, minúsculas, números y símbolos.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -139,7 +166,21 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">{t("auth.role")}</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="role">{t("auth.role")}</Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="max-w-xs space-y-2">
+                      <p><strong>Usuario:</strong> Asistir a eventos y comprar entradas</p>
+                      <p><strong>Vendedor:</strong> Vender productos en eventos</p>
+                      <p><strong>Organizador:</strong> Crear y gestionar eventos</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <Select value={role} onValueChange={(value: any) => setRole(value)}>
                 <SelectTrigger id="role" aria-label="Seleccionar tipo de cuenta">
                   <SelectValue />
